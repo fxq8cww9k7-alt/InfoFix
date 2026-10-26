@@ -1,16 +1,16 @@
 # Reglas del equipo — InfoFIX
 
-Guía rápida para que todos trabajemos sin pisarnos el código.
+Guía rápida para que todos trabajemos organizados y sin pisarnos el código.
 
 ---
 
 ## Ramas
 
-No se hacen commits directos en `main`. Punto.
+Tratemos de evitar hacer commits directos en `main` para que siempre esté estable.
 
-- **`main`** → Código listo para entregar a la maestra. Solo se actualiza desde `develop`.
+- **`main`** → Código listo para entregar a la maestra. Se actualiza desde `develop`.
 - **`develop`** → Rama de integración. Aquí se juntan los avances de todos.
-- **`feature/Txx-nombre`** → Tu rama personal para trabajar una tarea.
+- **`feature/Txx-nombre`** → Rama para trabajar una tarea específica.
 
 ### Flujo diario
 
@@ -31,6 +31,24 @@ git push -u origin feature/T05-login-jwt
 
 # Abrir Pull Request en GitHub hacia develop
 ```
+
+### Cuando dos trabajan en la misma tarea
+
+Si alguien se atora o necesita apoyo, el otro puede sumarse a la misma rama:
+
+```bash
+# El compañero que se une baja la rama que ya existe
+git fetch origin
+git checkout feature/T05-login-jwt
+
+# Trabaja normalmente, pero antes de hacer push jala los cambios del otro
+git pull origin feature/T05-login-jwt
+git add .
+git commit -m "feat(auth): agregar validación de contraseña (T05)"
+git push origin feature/T05-login-jwt
+```
+
+Lo importante es que ambos hagan `git pull` antes de `git push` para no sobreescribirse. Si les sale un conflicto, resuélvanlo juntos o avisen en el grupo para que Leo ayude.
 
 ---
 
@@ -87,8 +105,8 @@ async function autenticarUsuario(email, password) {
 ```
 
 ### 3. Comentarios internos
-- No comentar lo obvio (`// suma 1` → no).
-- Sí comentar decisiones técnicas o reglas del negocio:
+- Eviten comentar lo obvio (`// suma 1` → no hace falta).
+- Sí comenten decisiones técnicas o reglas del negocio:
   ```javascript
   // Enmascaramos el IMEI para la vista pública (solo últimos 4 dígitos)
   const imeiPublico = imei.slice(-4).padStart(15, '*');
@@ -102,13 +120,13 @@ async function autenticarUsuario(email, password) {
 - [ ] Puse cabecera al archivo y documenté las funciones.
 - [ ] No subí archivos `.env`, contraseñas ni `node_modules`.
 - [ ] Mi commit sigue el formato acordado.
-- [ ] Probé que no rompí lo que ya estaba funcionando.
+- [ ] Revisé que no afecté lo que ya estaba funcionando.
 
 ---
 
-## Cosas que NO van en el repo
+## Cosas que no van en el repo
 
-El `.gitignore` ya se encarga, pero para que lo sepan:
+El `.gitignore` ya se encarga, pero para que lo tengan presente:
 - `node_modules/` → Se descarga con `npm install`.
 - `.env` → Cada quien crea el suyo copiando `.env.example`.
 - Fotos de prueba pesadas.
