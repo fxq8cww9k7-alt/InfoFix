@@ -1,0 +1,69 @@
+# ==============================================================================
+# InfoFIX - .gitignore Maestro
+# Equipo: InfoPapus (Ingeniería de Software - CUCEI)
+# ==============================================================================
+
+# --- Dependencias de Node.js ---
+node_modules/
+package-lock.json.bak
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Variables de Entorno y Credenciales Sensibles ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# --- Bases de Datos Locales y Temporales ---
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- Almacén Multimedia (Evidencias Fotográficas) ---
+# Se ignoran las imágenes reales pero se mantienen los directorios con .gitkeep
+backend/uploads/antes/*
+backend/uploads/despues/*
+!backend/uploads/antes/.gitkeep
+!backend/uploads/despues/.gitkeep
+/uploads/
+temp/
+tmp/
+
+# --- Compilados y Empaquetados Frontend ---
+dist/
+dist-ssr/
+build/
+coverage/
+.cache/
+
+# --- Logs del Sistema ---
+logs/
+*.log
+
+# --- Archivos del Sistema Operativo y Editores ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# --- Archivos de Python (Scripts auxiliares y entornos) ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
