@@ -8,7 +8,7 @@
 const express = require('express');
 const cors = require('cors');
 const config = require('./config');
-const { requiereSesion } = require('./middleware/auth');
+const { requiereSesion, requiereRol } = require('./middleware/auth');
 const { manejadorErrores, HttpError } = require('./utils/errores');
 const ordenes = require('./services/ordenes.service');
 
@@ -27,6 +27,7 @@ app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/verificar', require('./routes/verificar.routes'));
 
 // Rutas privadas (requieren JWT)
+app.use('/api/usuarios', requiereSesion, requiereRol('admin'), require('./routes/usuarios.routes'));
 app.use('/api/clientes', requiereSesion, require('./routes/clientes.routes'));
 app.use('/api/dispositivos', requiereSesion, require('./routes/dispositivos.routes'));
 app.use('/api/ordenes', requiereSesion, require('./routes/ordenes.routes'));

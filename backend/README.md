@@ -22,6 +22,13 @@ npm test                  # prueba de punta a punta del flujo completo (BD en me
   las tablas y columnas que la API espera. Si el esquema oficial cambia nombres de columnas,
   hay que ajustar las consultas en `src/services/` y `src/routes/`.
 - El archivo `.sqlite` se crea solo al arrancar (ruta en `DB_PATH`) y no se sube al repo.
+  Si el esquema cambia (p. ej. se agrega una columna), borra tu `.sqlite` local y corre `npm run seed` otra vez.
+
+## Usuarios
+
+- `npm run seed` crea el primer administrador con los datos `SEED_ADMIN_*` de `.env`.
+- Con ese admin se dan de alta los técnicos desde `/api/usuarios` (pantalla de administración del frontend).
+- Desactivar una cuenta o cambiarle la contraseña aplica de inmediato: su token deja de funcionar.
 
 ## Estructura
 
@@ -48,7 +55,8 @@ src/
 - Rutas privadas: header `Authorization: Bearer <token>` (el token dura 8 h).
 - Errores: `{ "error": "mensaje para el usuario", ...extra }`
   - `400` validación. Trae `campos: [{ campo, mensaje }]` o `pendientes: [...]`.
-  - `401` sin sesión o sesión vencida → mandar al login.
+  - `401` sin sesión, sesión vencida o cuenta desactivada → mandar al login.
+  - `403` el usuario no tiene el rol necesario (p. ej. un técnico entrando a `/api/usuarios`).
   - `404` no existe · `409` conflicto (duplicado, orden activa, orden bloqueada).
 - Fotos: se sirven en `/uploads/antes/<archivo>` y `/uploads/despues/<archivo>` (la API regresa la URL).
 
@@ -67,6 +75,10 @@ src/
 | Método | Ruta | Descripción |
 | :-- | :-- | :-- |
 | GET | `/api/auth/me` | Usuario en sesión |
+| GET | `/api/usuarios` | **Solo admin.** Lista del personal |
+| POST | `/api/usuarios` | **Solo admin.** `{ nombre, email, password, rol? }`: contraseña ≥ 8 caracteres, `rol` admin o tecnico (por defecto tecnico). Correo repetido: `409` |
+| GET | `/api/usuarios/:id` | **Solo admin.** Un usuario |
+| PATCH | `/api/usuarios/:id` | **Solo admin.** `{ nombre?, rol?, activo?, password? }`: editar, cambiar contraseña o desactivar. Un admin no puede desactivarse ni quitarse el rol a sí mismo |
 | GET | `/api/dashboard` | Indicadores + órdenes activas (RF-13) |
 | GET | `/api/clientes?telefono=` | Busca cliente por teléfono |
 | GET | `/api/clientes/:id` | Cliente con sus dispositivos |

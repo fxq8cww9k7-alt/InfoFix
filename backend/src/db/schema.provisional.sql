@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email           TEXT    NOT NULL UNIQUE COLLATE NOCASE,
   password_hash   TEXT    NOT NULL,
   rol             TEXT    NOT NULL DEFAULT 'tecnico' CHECK (rol IN ('admin', 'tecnico')),
+  activo          INTEGER NOT NULL DEFAULT 1,       -- 0 = cuenta desactivada, no puede iniciar sesión
   fecha_registro  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 

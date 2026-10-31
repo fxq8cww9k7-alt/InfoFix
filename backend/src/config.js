@@ -43,6 +43,7 @@ const config = {
   uploadsDir: resolverRuta(process.env.UPLOADS_DIR || 'uploads'),
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiraEn: process.env.JWT_EXPIRES_IN || '8h',
+  rondasBcrypt: 10, // RF-01: mínimo 10 rondas
   publicBaseUrl: (process.env.PUBLIC_BASE_URL || 'http://localhost:5173').replace(/\/+$/, ''),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   maxArchivoBytes: Number(process.env.MAX_FILE_SIZE_BYTES) || 5 * 1024 * 1024,

@@ -25,7 +25,7 @@ const router = express.Router();
  */
 async function autenticarUsuario(email, password) {
   const usuario = db
-    .prepare('SELECT id, nombre, email, rol, password_hash FROM usuarios WHERE email = ?')
+    .prepare('SELECT id, nombre, email, rol, password_hash FROM usuarios WHERE email = ? AND activo = 1')
     .get(email);
   // Mismo mensaje para correo o contraseña incorrectos: no revelamos cuál falló (RF-01)
   if (!usuario || !(await bcrypt.compare(password, usuario.password_hash))) {

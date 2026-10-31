@@ -1,30 +1,53 @@
 /**
  * @file auth.js
- * @description Middleware de seguridad (bloque 2.2): verifica el JWT en las rutas privadas.
+ * @description Middleware de seguridad (bloque 2.2): verifica el JWT en las rutas privadas
+ *              y restringe rutas por rol.
  * @task T05 (RF-01)
  * @author María Fernanda González Rodríguez
  */
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const { db } = require('../db/conexion');
 const { HttpError } = require('../utils/errores');
+
+const MSG_SESION = 'Sesión no válida o expirada. Inicia sesión nuevamente';
 
 /**
  * Exige header `Authorization: Bearer <token>` válido y deja el usuario en `req.usuario`.
+ * El usuario se vuelve a leer de la BD para que una cuenta desactivada o un cambio de rol
+ * surtan efecto de inmediato, sin esperar a que venza el token.
  *
- * @throws {HttpError} 401 si falta el token, es inválido o ya expiró.
+ * @throws {HttpError} 401 si falta el token, es inválido, expiró o la cuenta está desactivada.
  */
 function requiereSesion(req, res, next) {
   const [esquema, token] = (req.headers.authorization || '').split(' ');
-  if (esquema !== 'Bearer' || !token) {
-    throw new HttpError(401, 'Sesión no válida o expirada. Inicia sesión nuevamente');
-  }
+  if (esquema !== 'Bearer' || !token) throw new HttpError(401, MSG_SESION);
+  let payload;
   try {
-    const payload = jwt.verify(token, config.jwtSecret);
-    req.usuario = { id: payload.sub, nombre: payload.nombre, rol: payload.rol };
+    payload = jwt.verify(token, config.jwtSecret);
   } catch {
-    throw new HttpError(401, 'Sesión no válida o expirada. Inicia sesión nuevamente');
+    throw new HttpError(401, MSG_SESION);
   }
+  const usuario = db.prepare('SELECT id, nombre, email, rol FROM usuarios WHERE id = ? AND activo = 1').get(payload.sub);
+  if (!usuario) throw new HttpError(401, MSG_SESION);
+  req.usuario = usuario;
   next();
 }
 
-module.exports = { requiereSesion };
+/**
+ * Permite el paso solo a usuarios con alguno de los roles indicados. Va después de `requiereSesion`.
+ *
+ * @param {...string} roles - p. ej. `'admin'`.
+ * @returns {import('express').RequestHandler}
+ * @throws {HttpError} 403 si el rol del usuario no está permitido.
+ */
+function requiereRol(...roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.usuario.rol)) {
+      throw new HttpError(403, 'No tienes permisos para realizar esta acción');
+    }
+    next();
+  };
+}
+
+module.exports = { requiereSesion, requiereRol };

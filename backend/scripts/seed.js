@@ -6,9 +6,8 @@
  * @author María Fernanda González Rodríguez
  */
 const bcrypt = require('bcryptjs');
+const config = require('../src/config');
 const { db } = require('../src/db/conexion');
-
-const RONDAS_BCRYPT = 10; // RF-01: mínimo 10 rondas
 
 const nombre = process.env.SEED_ADMIN_NOMBRE || 'Administrador';
 const email = process.env.SEED_ADMIN_EMAIL;
@@ -19,10 +18,11 @@ if (!email || !password) {
   process.exit(1);
 }
 
-const hash = bcrypt.hashSync(password, RONDAS_BCRYPT);
+const hash = bcrypt.hashSync(password, config.rondasBcrypt);
 db.prepare(
   `INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, 'admin')
-   ON CONFLICT(email) DO UPDATE SET nombre = excluded.nombre, password_hash = excluded.password_hash`,
+   ON CONFLICT(email) DO UPDATE SET nombre = excluded.nombre, password_hash = excluded.password_hash,
+                                    rol = 'admin', activo = 1`,
 ).run(nombre, email, hash);
 
 console.log(`Usuario listo: ${email}`);
