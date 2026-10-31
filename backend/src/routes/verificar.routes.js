@@ -7,10 +7,9 @@
 const express = require('express');
 const { vistaPublica } = require('../services/certificado.service');
 const { HttpError } = require('../utils/errores');
+const { RE_UUID } = require('../middleware/validar');
 
 const router = express.Router();
-
-const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 router.get('/:token', (req, res) => {
   if (!RE_UUID.test(req.params.token)) {

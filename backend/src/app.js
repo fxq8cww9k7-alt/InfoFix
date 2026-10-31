@@ -11,6 +11,7 @@ const config = require('./config');
 const { requiereSesion, requiereRol } = require('./middleware/auth');
 const { manejadorErrores, HttpError } = require('./utils/errores');
 const ordenes = require('./services/ordenes.service');
+const { texto } = require('./middleware/validar');
 
 const app = express();
 
@@ -25,13 +26,18 @@ app.get('/api/salud', (req, res) => res.json({ ok: true }));
 // Rutas públicas
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/verificar', require('./routes/verificar.routes'));
+app.use('/api/estatus', require('./routes/estatus.routes'));
 
 // Rutas privadas (requieren JWT)
 app.use('/api/usuarios', requiereSesion, requiereRol('admin'), require('./routes/usuarios.routes'));
 app.use('/api/clientes', requiereSesion, require('./routes/clientes.routes'));
 app.use('/api/dispositivos', requiereSesion, require('./routes/dispositivos.routes'));
 app.use('/api/ordenes', requiereSesion, require('./routes/ordenes.routes'));
-app.get('/api/dashboard', requiereSesion, (req, res) => res.json(ordenes.dashboard()));
+app.use('/api/certificados', requiereSesion, require('./routes/certificados.routes'));
+app.use('/api/notificaciones', requiereSesion, require('./routes/notificaciones.routes'));
+app.get('/api/dashboard', requiereSesion, (req, res) =>
+  res.json(ordenes.dashboard({ estado: texto(req.query.estado) || undefined })),
+);
 
 app.use('/api', () => {
   throw new HttpError(404, 'Ruta no encontrada');
