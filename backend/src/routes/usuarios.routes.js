@@ -15,10 +15,7 @@ const { validar, reglas, idValido, texto } = require('../middleware/validar');
 const router = express.Router();
 
 const ROLES = ['admin', 'tecnico'];
-const MIN_PASSWORD = 8;
 const COLUMNAS = 'id, nombre, email, rol, activo, fecha_registro';
-
-const msgPassword = `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres`;
 
 /**
  * Lee un usuario para responder (sin hash) o lanza 404.
@@ -46,7 +43,7 @@ router.post(
   validar({
     nombre: [reglas.requerido('El nombre es obligatorio')],
     email: [reglas.requerido('El correo es obligatorio'), reglas.email('El correo no tiene un formato válido')],
-    password: [reglas.minimo(MIN_PASSWORD, msgPassword)],
+    password: [reglas.password()],
     rol: [(v) => (v === undefined || ROLES.includes(v) ? null : 'El rol debe ser admin o tecnico')],
   }),
   async (req, res) => {
@@ -75,7 +72,7 @@ router.patch(
     nombre: [(v) => (v === undefined || texto(v) ? null : 'El nombre no puede quedar vacío')],
     rol: [(v) => (v === undefined || ROLES.includes(v) ? null : 'El rol debe ser admin o tecnico')],
     activo: [(v) => (v === undefined || typeof v === 'boolean' ? null : 'activo debe ser true o false')],
-    password: [(v) => (v === undefined || texto(v).length >= MIN_PASSWORD ? null : msgPassword)],
+    password: [(v, body) => (v === undefined ? null : reglas.password()(v, body))],
   }),
   async (req, res) => {
     const id = idValido(req.params.id);
@@ -88,13 +85,22 @@ router.patch(
     }
 
     const hash = password === undefined ? null : await bcrypt.hash(password, config.rondasBcrypt);
+    // Un cambio de contraseña cierra las sesiones abiertas de ese usuario
     db.prepare(
       `UPDATE usuarios SET nombre = COALESCE(?, nombre),
                            rol = COALESCE(?, rol),
                            activo = COALESCE(?, activo),
-                           password_hash = COALESCE(?, password_hash)
+                           password_hash = COALESCE(?, password_hash),
+                           version_sesion = version_sesion + (? IS NOT NULL)
         WHERE id = ?`,
-    ).run(nombre === undefined ? null : texto(nombre), rol ?? null, activo === undefined ? null : Number(activo), hash, id);
+    ).run(
+      nombre === undefined ? null : texto(nombre),
+      rol ?? null,
+      activo === undefined ? null : Number(activo),
+      hash,
+      hash,
+      id,
+    );
     res.json({ usuario: obtenerUsuario(id) });
   },
 );
