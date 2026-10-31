@@ -8,6 +8,7 @@
 const { HttpError } = require('../utils/errores');
 
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const texto = (v) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '');
 
@@ -25,6 +26,12 @@ const reglas = {
   enteroNoNegativo: (mensaje) => (v) =>
     Number.isInteger(Number(v)) && Number(v) >= 0 && String(v).trim() !== '' ? null : mensaje,
   verdadero: (mensaje) => (v) => (v === true || v === 'true' || v === 1 || v === '1' ? null : mensaje),
+  // P2: mínimo 8 caracteres y al menos un número
+  password: () => (v) =>
+    typeof v === 'string' && v.length >= 8 && /\d/.test(v)
+      ? null
+      : 'La contraseña debe tener al menos 8 caracteres y un número',
+  igualA: (otroCampo, mensaje) => (v, body) => (v === body[otroCampo] ? null : mensaje),
 };
 
 /**
@@ -82,4 +89,4 @@ function idValido(valor) {
   return id;
 }
 
-module.exports = { validar, reglas, imeiOSerie, idValido, texto };
+module.exports = { validar, reglas, imeiOSerie, idValido, texto, RE_EMAIL, RE_UUID };
