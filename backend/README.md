@@ -1,6 +1,7 @@
 # InfoFIX — Backend (API REST)
 
 Node.js + Express + SQLite (`node:sqlite`, sin dependencias nativas que compilar).
+Implementa los requisitos del ERS (RF-01 a RF-15) y las pantallas del diseño de interfaz (Act. 11, P1–P20).
 
 ## Cómo correrlo
 
@@ -12,7 +13,7 @@ npm install
 cp .env.example .env      # en Windows: copy .env.example .env
 npm run seed              # crea el usuario admin de desarrollo (ver SEED_ADMIN_* en .env)
 npm run dev               # http://localhost:3000, se reinicia al guardar cambios
-npm test                  # prueba de punta a punta del flujo completo (BD en memoria)
+npm test                  # pruebas de punta a punta (BD en memoria)
 ```
 
 ## Base de datos
@@ -24,11 +25,20 @@ npm test                  # prueba de punta a punta del flujo completo (BD en me
 - El archivo `.sqlite` se crea solo al arrancar (ruta en `DB_PATH`) y no se sube al repo.
   Si el esquema cambia (p. ej. se agrega una columna), borra tu `.sqlite` local y corre `npm run seed` otra vez.
 
-## Usuarios
+## Cuentas del personal
 
 - `npm run seed` crea el primer administrador con los datos `SEED_ADMIN_*` de `.env`.
-- Con ese admin se dan de alta los técnicos desde `/api/usuarios` (pantalla de administración del frontend).
-- Desactivar una cuenta o cambiarle la contraseña aplica de inmediato: su token deja de funcionar.
+- **Registro (P2):** cualquier persona del taller puede crear su cuenta con el **código del taller**
+  (`CODIGO_TALLER` en `.env`); entra con rol `tecnico`. Sin código configurado, el registro queda deshabilitado.
+- **Administración:** un admin puede crear, editar, cambiar contraseña, cambiar rol o desactivar cuentas en `/api/usuarios`.
+- **Recuperar contraseña (P3):** enlace por correo de un solo uso que caduca en 30 minutos.
+- Desactivar una cuenta o cambiarle la contraseña aplica de inmediato: las sesiones abiertas dejan de funcionar.
+
+## Correos
+
+Se usan para recuperar contraseña (P3) y avisos al cliente (P10). Con `SMTP_HOST` vacío
+(desarrollo) el correo **se imprime en la consola del servidor**, ahí aparece el enlace de recuperación.
+Para la demo se puede configurar una cuenta SMTP real (p. ej. Gmail con contraseña de aplicación).
 
 ## Estructura
 
@@ -39,14 +49,18 @@ src/
 ├── config.js            # Variables de entorno
 ├── db/conexion.js       # Conexión SQLite y transacciones (2.5)
 ├── middleware/
-│   ├── auth.js          # Verificación JWT (2.2)
+│   ├── auth.js          # Verificación JWT y roles (2.2)
 │   ├── validar.js       # Validación de formato y campos obligatorios (3.1, 3.2, 3.5)
 │   └── subida.js        # Fotos JPG/PNG máx. 5 MB, revisa la firma real del archivo (3.3)
 ├── services/
-│   ├── ordenes.service.js     # Folios, máquina de estados, fotos, piezas, garantía (2.3, 3.4)
-│   └── certificado.service.js # Certificado, UUID, QR y vista pública (2.4)
+│   ├── ordenes.service.js         # Folios, máquina de estados, fotos, piezas, garantía, bitácora (2.3, 3.4)
+│   ├── certificado.service.js     # Certificado, UUID, QR, estatus y verificación pública (2.4)
+│   ├── avisos.service.js          # Avisos al cliente por estatus y correo (P10)
+│   └── notificaciones.service.js  # Notificaciones del panel (P5)
 ├── routes/              # Endpoints
-└── utils/errores.js     # HttpError y respuesta de errores
+└── utils/
+    ├── errores.js       # HttpError y respuesta de errores
+    └── correo.js        # Envío de correos (o consola en desarrollo)
 ```
 
 ## Convenciones de la API
@@ -55,56 +69,106 @@ src/
 - Rutas privadas: header `Authorization: Bearer <token>` (el token dura 8 h).
 - Errores: `{ "error": "mensaje para el usuario", ...extra }`
   - `400` validación. Trae `campos: [{ campo, mensaje }]` o `pendientes: [...]`.
-  - `401` sin sesión, sesión vencida o cuenta desactivada → mandar al login.
-  - `403` el usuario no tiene el rol necesario (p. ej. un técnico entrando a `/api/usuarios`).
+  - `401` sin sesión, sesión vencida, contraseña cambiada o cuenta desactivada → mandar al login.
+  - `403` sin permiso (rol) o código del taller incorrecto.
   - `404` no existe · `409` conflicto (duplicado, orden activa, orden bloqueada).
 - Fotos: se sirven en `/uploads/antes/<archivo>` y `/uploads/despues/<archivo>` (la API regresa la URL).
+- Fechas en ISO 8601 (UTC).
 
 ## Endpoints
 
-### Públicos
+### Públicos (sin sesión)
 
-| Método | Ruta | Descripción |
-| :-- | :-- | :-- |
-| GET | `/api/salud` | Verifica que el servidor esté arriba |
-| POST | `/api/auth/login` | `{ email, password }` → `{ token, usuario }` (RF-01) |
-| GET | `/api/verificar/:token` | Certificado público: IMEI enmascarado, sin datos del cliente (RF-12) |
+| Método | Ruta | Pantalla | Descripción |
+| :-- | :-- | :-- | :-- |
+| GET | `/api/salud` | | Verifica que el servidor esté arriba |
+| POST | `/api/auth/login` | P1 | `{ email, password }` → `{ token, usuario }` |
+| POST | `/api/auth/registro` | P2 | `{ nombre, email, password, confirmar_password, codigo_taller }`. Contraseña ≥ 8 caracteres con 1 número |
+| POST | `/api/auth/recuperar` | P3 | `{ email }`. Siempre responde lo mismo (no revela si el correo existe) |
+| POST | `/api/auth/restablecer` | P3 | `{ token, password, confirmar_password }`. Enlace vencido o usado: `400` con `codigo: "ENLACE_CADUCADO"` |
+| GET | `/api/estatus/:token` | P15 | Avance de la reparación (QR de la nota de servicio): paso n de 5, notas por etapa, fotos de recepción, avisos y contacto del taller. Sin datos del cliente |
+| GET | `/api/verificar/:token` | P16 | Certificado público: IMEI enmascarado, días restantes de garantía, sin datos del cliente (RF-12) |
 
 ### Privados (requieren token)
 
-| Método | Ruta | Descripción |
-| :-- | :-- | :-- |
-| GET | `/api/auth/me` | Usuario en sesión |
-| GET | `/api/usuarios` | **Solo admin.** Lista del personal |
-| POST | `/api/usuarios` | **Solo admin.** `{ nombre, email, password, rol? }`: contraseña ≥ 8 caracteres, `rol` admin o tecnico (por defecto tecnico). Correo repetido: `409` |
-| GET | `/api/usuarios/:id` | **Solo admin.** Un usuario |
-| PATCH | `/api/usuarios/:id` | **Solo admin.** `{ nombre?, rol?, activo?, password? }`: editar, cambiar contraseña o desactivar. Un admin no puede desactivarse ni quitarse el rol a sí mismo |
-| GET | `/api/dashboard` | Indicadores + órdenes activas (RF-13) |
-| GET | `/api/clientes?telefono=` | Busca cliente por teléfono |
-| GET | `/api/clientes/:id` | Cliente con sus dispositivos |
-| POST | `/api/clientes` | `{ nombre_completo, telefono, email?, aviso_privacidad: true }` (RF-02). Si el teléfono ya existe: `409` con `cliente` |
-| GET | `/api/dispositivos?imei_o_serie=` | Busca dispositivo |
-| POST | `/api/dispositivos` | `{ cliente_id, tipo, marca, modelo, color?, imei_o_serie }` (RF-03). `tipo`: celular, tablet, laptop u otro. Si ya existe: `409` con `dispositivo` |
-| GET | `/api/dispositivos/:id/historial` | Reparaciones entregadas del equipo (RF-15) |
-| GET | `/api/ordenes?q=&estado=` | Lista/búsqueda por folio, cliente, teléfono o IMEI (mín. 3 caracteres) (RF-14) |
-| POST | `/api/ordenes` | **multipart/form-data**: `dispositivo_id`, `falla_reportada`, `condicion_fisica`, `accesorios` (JSON o separado por comas), `fotos` (1–5) (RF-04, RF-05) |
-| GET | `/api/ordenes/:id` | Expediente completo: cliente, equipo, historial, fotos, piezas, garantía, certificado |
-| PATCH | `/api/ordenes/:id/estado-inicial` | Corrige falla, condición o accesorios (solo en Recibido) |
-| PATCH | `/api/ordenes/:id/estado` | `{ estado, nota }`: solo el siguiente estado, nota ≥ 5 caracteres (RF-06). Al pasar a `Entregado` regresa también `certificado` con `qr` |
-| POST | `/api/ordenes/:id/evidencias` | **multipart**: `tipo` (`antes`/`despues`), `fotos` (máx. 5 por etapa) (RF-07) |
-| POST | `/api/ordenes/:id/refacciones` | `{ nombre, tipo, numero_serie? }`; `tipo`: original, compatible o reacondicionada. Solo en Diagnóstico/Reparación (RF-08) |
-| DELETE | `/api/ordenes/:id/refacciones/:refaccionId` | Quita una pieza (antes de entregar) |
-| PUT | `/api/ordenes/:id/garantia` | `{ dias_garantia, terminos_garantia }` (RF-09) |
-| GET | `/api/ordenes/:id/certificado` | Datos para imprimir + `qr` (PNG en data URL) (RF-10, RF-11) |
+**Cuenta y administración**
+
+| Método | Ruta | Pantalla | Descripción |
+| :-- | :-- | :-- | :-- |
+| GET | `/api/auth/me` | | Usuario en sesión |
+| GET | `/api/usuarios` | | **Solo admin.** Lista del personal |
+| POST | `/api/usuarios` | | **Solo admin.** `{ nombre, email, password, rol? }` |
+| GET | `/api/usuarios/:id` | | **Solo admin.** Un usuario |
+| PATCH | `/api/usuarios/:id` | | **Solo admin.** `{ nombre?, rol?, activo?, password? }`. Un admin no puede desactivarse ni quitarse el rol a sí mismo |
+
+**Panel**
+
+| Método | Ruta | Pantalla | Descripción |
+| :-- | :-- | :-- | :-- |
+| GET | `/api/dashboard?estado=` | P4 | Indicadores (activas, en pruebas, terminadas, garantías vigentes), `por_etapa` para la gráfica y órdenes activas (filtrables por etapa) |
+| GET | `/api/notificaciones?no_leidas=true&categoria=` | P5 | Notificaciones + contador `no_leidas`. `categoria`: ordenes, garantias, cuentas |
+| POST | `/api/notificaciones/leer` | P5 | `{ ids? }`. Sin `ids` marca todas como leídas |
+
+**Clientes y dispositivos**
+
+| Método | Ruta | Pantalla | Descripción |
+| :-- | :-- | :-- | :-- |
+| GET | `/api/clientes?telefono=` | P6 | Un cliente por teléfono (para reutilizarlo) |
+| GET | `/api/clientes?q=&orden=nombre\|reciente` | P18 | Lista con número de órdenes y última visita |
+| GET | `/api/clientes/:id` | P18 | Ficha: resumen, equipos y órdenes recientes |
+| POST | `/api/clientes` | P6 | `{ nombre_completo, telefono, email?, aviso_privacidad: true }`. Teléfono existente: `409` con `cliente` |
+| PATCH | `/api/clientes/:id` | P18 | `{ nombre_completo?, telefono?, email? }` |
+| GET | `/api/dispositivos?imei_o_serie=` | P6 | Un dispositivo por IMEI/serie |
+| GET | `/api/dispositivos?q=&tipo=` | P19 | Lista con propietario, reparaciones certificadas y orden activa |
+| POST | `/api/dispositivos` | P6 | `{ cliente_id, tipo, marca, modelo, color?, imei_o_serie, contrasena_equipo? }`. Existente: `409` con `dispositivo` |
+| PATCH | `/api/dispositivos/:id` | P18 | Edita el equipo. Con certificados emitidos solo cambian color y contraseña |
+| GET | `/api/dispositivos/:id/historial` | P20 | Reparaciones con piezas y garantía, orden activa y primera visita (RF-15) |
+
+**Órdenes**
+
+| Método | Ruta | Pantalla | Descripción |
+| :-- | :-- | :-- | :-- |
+| GET | `/api/ordenes?q=&estado=&desde=&hasta=&tecnico=&pagina=&por_pagina=` | P17 | Búsqueda (mín. 3 caracteres), filtros, `paginacion` y `resumen` (RF-14) |
+| POST | `/api/ordenes` | P6 | **multipart/form-data**: `dispositivo_id`, `falla_reportada`, `condicion_fisica`, `accesorios` (JSON o separado por comas), `fotos` (1–5) |
+| GET | `/api/ordenes/:id` | P7 | Expediente: cliente, equipo, técnico, línea de tiempo, fotos, piezas, garantía, `pendientes_entrega`, `url_estatus` |
+| PATCH | `/api/ordenes/:id/estado-inicial` | P7 | Corrige falla, condición o accesorios (solo en Recibido) |
+| PATCH | `/api/ordenes/:id/estado` | P11 | `{ estado, nota }`: solo el siguiente estado, nota ≥ 5 caracteres. Al pasar a `Entregado` regresa también `certificado` con `qr` |
+| POST | `/api/ordenes/:id/evidencias` | P9 | **multipart**: `tipo` (`antes`/`despues`), `fotos`. Máx. 5 por etapa; "antes" solo en Recibido |
+| POST | `/api/ordenes/:id/refacciones` | P8 | `{ nombre, tipo, numero_serie? }`. Solo en Diagnóstico/Reparación |
+| PUT | `/api/ordenes/:id/refacciones/:refaccionId` | P8 | Editar pieza |
+| DELETE | `/api/ordenes/:id/refacciones/:refaccionId` | P8 | Eliminar pieza |
+| PUT | `/api/ordenes/:id/garantia` | P7 | `{ dias_garantia, terminos_garantia }` |
+| GET | `/api/ordenes/:id/nota-servicio` | P12 | Datos para imprimir la nota de recepción + `estatus.qr` (QR a la página de estatus) |
+| GET | `/api/ordenes/:id/certificado` | P13 | Datos para imprimir el certificado + `qr` (PNG en data URL) |
+| GET | `/api/ordenes/:id/avisos` | P10 | Avisos enviados y `tipos` disponibles |
+| GET | `/api/ordenes/:id/avisos/vista-previa?tipo=&adicional=` | P10 | Mensaje tal como lo verá el cliente |
+| POST | `/api/ordenes/:id/avisos` | P10 | `{ tipo, en_estatus?: true, por_correo?: false, adicional? }`. `tipo`: actualizacion_estado, requiere_autorizacion, listo_para_recoger |
+
+**Certificados**
+
+| Método | Ruta | Pantalla | Descripción |
+| :-- | :-- | :-- | :-- |
+| GET | `/api/certificados?q=&garantia=vigente\|vencida` | P14 | Certificados emitidos, `total` y `vigentes` |
 
 ### Reglas de negocio que aplica el servidor
 
 - Estados: `Recibido → Diagnóstico → Reparación → Pruebas → Entregado`, sin saltos ni retrocesos.
 - Folio `RP-AAAA-NNNN`, consecutivo por año, generado dentro de una transacción.
 - Un dispositivo no puede tener dos órdenes activas.
+- Cada acción sobre la orden (estado, pieza, foto, garantía, aviso) queda en la línea de tiempo (`historial[].tipo`).
 - Para pasar a **Entregado** se necesita: ≥1 foto antes, ≥1 foto después, garantía registrada y haber pasado
   por Diagnóstico, Reparación y Pruebas. Si falta algo, responde `400` con la lista `pendientes`.
 - Al entregar: se calcula `garantia_fin = fecha_entrega + dias_garantia`, se emite el certificado con
   token UUID v4 y la orden queda **bloqueada** (no se pueden cambiar fotos, piezas ni garantía).
-- El QR apunta a `PUBLIC_BASE_URL/verificar/<token>`, es decir, a la **página del frontend**,
-  que debe llamar a `GET /api/verificar/:token` para obtener los datos.
+- Notificaciones automáticas: orden sin avanzar de etapa en `DIAS_ORDEN_DETENIDA` días y garantía que vence
+  en los próximos `DIAS_AVISO_GARANTIA` días. Se generan al consultar `/api/notificaciones`.
+
+### Rutas que debe tener el frontend
+
+Los QR y los correos apuntan a páginas del **frontend** (`PUBLIC_BASE_URL`), que a su vez llaman a la API:
+
+| Página del frontend | Llama a |
+| :-- | :-- |
+| `/estatus/:token` | `GET /api/estatus/:token` |
+| `/verificar/:token` | `GET /api/verificar/:token` |
+| `/restablecer?token=...` | `POST /api/auth/restablecer` |
