@@ -29,17 +29,16 @@ function resolverRuta(ruta) {
  *
  * @returns {string} Ruta absoluta del .sql a ejecutar al arrancar.
  */
-function elegirEsquema() {
-  const oficial = path.join(RAIZ_BACKEND, '..', 'database', 'schema.sql');
-  if (fs.existsSync(oficial)) return oficial;
-  return path.join(RAIZ_BACKEND, 'src', 'db', 'schema.provisional.sql');
+const schemaOficial = path.join(RAIZ_BACKEND, '..', 'database', 'schema.sql');
+if (!fs.existsSync(schemaOficial)) {
+  throw new Error('No se encontró el esquema oficial de la base de datos en: ' + schemaOficial);
 }
 
 const config = {
   puerto: Number(process.env.PORT) || 3000,
   entorno: process.env.NODE_ENV || 'development',
   dbPath: resolverRuta(process.env.DB_PATH || '../database/infofix.sqlite'),
-  schemaPath: elegirEsquema(),
+  schemaPath: schemaOficial,
   uploadsDir: resolverRuta(process.env.UPLOADS_DIR || 'uploads'),
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiraEn: process.env.JWT_EXPIRES_IN || '8h',
