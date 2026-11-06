@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import NuevaOrdenPage from './pages/NuevaOrdenPage';
+import DetalleOrdenPage from './pages/DetalleOrdenPage';
 import PublicStatusPage from './pages/PublicStatusPage';
 import PublicVerifyPage from './pages/PublicVerifyPage';
 
@@ -56,6 +57,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <NuevaOrdenPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ordenes/:id"
+            element={
+              <ProtectedRoute>
+                <DetalleOrdenPage />
               </ProtectedRoute>
             }
           />

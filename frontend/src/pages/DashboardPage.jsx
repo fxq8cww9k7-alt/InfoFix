@@ -234,6 +234,13 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
+                    <Link
+                      to={`/ordenes/${ord.id}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-semibold transition-colors"
+                    >
+                      <span>Expediente</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
                     {ord.token_estatus && (
                       <Link
                         to={`/estatus/${ord.token_estatus}`}
