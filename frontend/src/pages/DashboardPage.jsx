@@ -84,6 +84,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Botón Nueva Orden */}
+            <Link
+              to="/ordenes/nueva"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-cyan-500/20 active:scale-[0.98]"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Nueva Orden</span>
+            </Link>
+
             {/* Campana de Notificaciones */}
             <div className="relative">
               <button

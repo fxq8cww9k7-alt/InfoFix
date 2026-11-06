@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
+import NuevaOrdenPage from './pages/NuevaOrdenPage';
 import PublicStatusPage from './pages/PublicStatusPage';
 import PublicVerifyPage from './pages/PublicVerifyPage';
 
@@ -47,6 +48,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ordenes/nueva"
+            element={
+              <ProtectedRoute>
+                <NuevaOrdenPage />
               </ProtectedRoute>
             }
           />
