@@ -188,15 +188,33 @@ router.put(
   },
 );
 
-// P12: nota de servicio imprimible con QR a la página de estatus
+// P12: nota de servicio imprimible con QR a la página de estatus. Lleva los datos del cliente
+// (es la hoja que firma al dejar su equipo), pero NO la contraseña/PIN del equipo: esa hoja se la
+// lleva el cliente y el PIN solo lo necesita el técnico, que lo ve en el expediente (P7).
 router.get('/:id/nota-servicio', async (req, res) => {
-  const orden = ordenes.obtenerDetalle(idValido(req.params.id));
+  const detalle = ordenes.obtenerDetalle(idValido(req.params.id));
+  const { contrasena_equipo, ...dispositivo } = detalle.dispositivo;
+  const orden = { ...detalle, dispositivo };
   res.json({ orden, taller: config.taller, estatus: await certificados.qrEstatus(orden.url_estatus) });
 });
 
+// P13: certificado imprimible. El certificado se lo lleva el cliente y lo puede enseñar a otras
+// personas, así que solo habla de lo que se le hizo al equipo:
+// - sin datos del cliente (nombre, teléfono, correo); esos van solo en la nota de servicio (P12),
+// - sin la contraseña/PIN del equipo,
+// - con el IMEI/serie enmascarado (solo los últimos 4).
+// La nota de servicio (P12) y el expediente (P7) siguen con todo; por eso aquí armamos una copia
+// y no tocamos obtenerDetalle.
 router.get('/:id/certificado', async (req, res) => {
   const id = idValido(req.params.id);
-  res.json({ orden: ordenes.obtenerDetalle(id), certificado: await certificados.certificadoConQr(id) });
+  const { cliente, ...detalle } = ordenes.obtenerDetalle(id);
+  const certificado = await certificados.certificadoConQr(id);
+  const { cliente_id, contrasena_equipo, ...dispositivo } = detalle.dispositivo;
+  const orden = {
+    ...detalle,
+    dispositivo: { ...dispositivo, imei_o_serie: certificados.enmascarar(dispositivo.imei_o_serie) },
+  };
+  res.json({ orden, certificado });
 });
 
 // P10: avisos al cliente

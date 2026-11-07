@@ -1,7 +1,7 @@
 /**
  * @file cuentas.test.js
- * @description Pruebas de registro con código del taller (P2), recuperación de contraseña (P3)
- *              y notificaciones automáticas (P5).
+ * @description Pruebas de registro con código del taller (P2), recuperación de contraseña (P3),
+ *              notificaciones automáticas (P5) y cuenta desactivada.
  *              Uso: `npm test`
  * @task T05 (apoyo a QA T08)
  * @author María Fernanda González Rodríguez
@@ -39,7 +39,7 @@ test('registro: valida código del taller, contraseña y confirmación', async (
 
   const ok = await registro();
   assert.equal(ok.status, 201);
-  assert.equal(ok.body.usuario.rol, 'tecnico');
+  assert.equal(ok.body.usuario.email, 'rosa@infofix.test');
 
   assert.equal((await registro()).status, 409);
   assert.equal((await login('rosa@infofix.test', 'Clave1234')).status, 200);
@@ -129,4 +129,16 @@ test('notificaciones automáticas: orden detenida y garantía por vencer', async
 
   const soloGarantias = await request(app).get('/api/notificaciones?categoria=garantias').set(auth);
   assert.ok(soloGarantias.body.notificaciones.every((n) => n.categoria === 'garantias'));
+});
+
+test('cuenta desactivada: su sesión abierta deja de servir y ya no puede entrar', async () => {
+  const { token } = (await login('rosa@infofix.test', 'NuevaClave7')).body;
+  const auth = { Authorization: `Bearer ${token}` };
+  assert.equal((await request(app).get('/api/auth/me').set(auth)).status, 200);
+
+  // No hay endpoint para desactivar cuentas en esta versión, así que se hace directo en la BD
+  db.prepare("UPDATE usuarios SET activo = 0 WHERE email = 'rosa@infofix.test'").run();
+
+  assert.equal((await request(app).get('/api/auth/me').set(auth)).status, 401);
+  assert.equal((await login('rosa@infofix.test', 'NuevaClave7')).status, 401);
 });

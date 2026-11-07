@@ -7,7 +7,7 @@
 const express = require('express');
 const { db } = require('../db/conexion');
 const { HttpError } = require('../utils/errores');
-const { validar, reglas, idValido, texto } = require('../middleware/validar');
+const { validar, reglas, idValido, texto, limpiarTelefono } = require('../middleware/validar');
 
 const router = express.Router();
 
@@ -21,7 +21,8 @@ const buscarPorTelefono = (telefono) => db.prepare(`SELECT ${COLUMNAS} FROM clie
  * GET /api/clientes?q=&orden=nombre|reciente → lista con número de órdenes y última visita (P18)
  */
 router.get('/', (req, res) => {
-  const telefono = texto(req.query.telefono);
+  // Se limpia igual que al registrar, así "33 1234 5678" encuentra al cliente guardado como "3312345678"
+  const telefono = limpiarTelefono(req.query.telefono);
   if (telefono) {
     const cliente = buscarPorTelefono(telefono);
     if (!cliente) throw new HttpError(404, 'No existe un cliente con ese teléfono');
@@ -84,7 +85,9 @@ router.post(
     aviso_privacidad: [reglas.verdadero('Debe aceptarse el aviso de privacidad')],
   }),
   (req, res) => {
-    const telefono = texto(req.body.telefono);
+    // Ya pasó la validación, así que el teléfono limpio tiene exactamente 10 dígitos.
+    // Con este mismo valor se buscan duplicados y se guarda en la BD.
+    const telefono = limpiarTelefono(req.body.telefono);
     const existente = buscarPorTelefono(telefono);
     // Si el teléfono ya está registrado regresamos el cliente para que el frontend lo seleccione
     if (existente) {
@@ -109,9 +112,11 @@ router.patch(
   (req, res) => {
     const id = idValido(req.params.id);
     if (!db.prepare('SELECT 1 FROM clientes WHERE id = ?').get(id)) throw new HttpError(404, 'Cliente no encontrado');
-    const { nombre_completo: nombre, telefono, email } = req.body;
-    if (telefono !== undefined) {
-      const otro = buscarPorTelefono(texto(telefono));
+    const { nombre_completo: nombre, email } = req.body;
+    // Teléfono limpio (sin espacios ni guiones) para comparar y guardar; null si no se va a cambiar
+    const telefono = req.body.telefono === undefined ? null : limpiarTelefono(req.body.telefono);
+    if (telefono !== null) {
+      const otro = buscarPorTelefono(telefono);
       if (otro && otro.id !== id) throw new HttpError(409, 'Ya existe otro cliente con ese teléfono');
     }
     db.prepare(
@@ -121,7 +126,7 @@ router.patch(
         WHERE id = ?`,
     ).run(
       nombre === undefined ? null : texto(nombre),
-      telefono === undefined ? null : texto(telefono),
+      telefono,
       Number(email !== undefined),
       texto(email) || null,
       id,

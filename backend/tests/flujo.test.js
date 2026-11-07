@@ -35,7 +35,7 @@ let token;
 const auth = () => ({ Authorization: `Bearer ${token}` });
 
 before(() => {
-  db.prepare("INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES ('Técnico', 'tecnico@infofix.test', ?, 'tecnico')").run(
+  db.prepare("INSERT INTO usuarios (nombre, email, password_hash) VALUES ('Técnico', 'tecnico@infofix.test', ?)").run(
     bcrypt.hashSync('Clave123!', 10),
   );
 });
@@ -273,11 +273,11 @@ test('flujo completo de reparación hasta el certificado público', async () => 
   const dispositivos = await request(app).get('/api/dispositivos?tipo=celular').set(auth());
   assert.equal(dispositivos.body.dispositivos[0].reparaciones_certificadas, 1);
 
-  // Con certificado emitido ya no se puede cambiar el IMEI, pero sí el color
+  // Con certificado emitido ya no se puede cambiar ningún dato del equipo (ni el IMEI ni el color)
   const cambioImei = await request(app).patch(`/api/dispositivos/${dispositivoId}`).set(auth()).send({ imei_o_serie: '111111111111111' });
   assert.equal(cambioImei.status, 409);
   const cambioColor = await request(app).patch(`/api/dispositivos/${dispositivoId}`).set(auth()).send({ color: 'Azul' });
-  assert.equal(cambioColor.body.dispositivo.color, 'Azul');
+  assert.equal(cambioColor.status, 409);
 
   // Historial del dispositivo (RF-15, P20)
   const historial = await request(app).get(`/api/dispositivos/${dispositivoId}/historial`).set(auth());

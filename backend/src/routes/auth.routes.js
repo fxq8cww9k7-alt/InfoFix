@@ -38,12 +38,12 @@ function igualSeguro(a, b) {
  * Emite el JWT. `ver` se compara contra `usuarios.version_sesion` en cada petición,
  * así al cambiar la contraseña se invalidan las sesiones abiertas en otros equipos.
  *
- * @param {{id: number, nombre: string, rol: string, version_sesion: number}} usuario
+ * @param {{id: number, nombre: string, version_sesion: number}} usuario
  * @returns {string}
  */
 function firmarToken(usuario) {
   return jwt.sign(
-    { sub: usuario.id, nombre: usuario.nombre, rol: usuario.rol, ver: usuario.version_sesion },
+    { sub: usuario.id, nombre: usuario.nombre, ver: usuario.version_sesion },
     config.jwtSecret,
     { expiresIn: config.jwtExpiraEn },
   );
@@ -59,7 +59,7 @@ function firmarToken(usuario) {
  */
 async function autenticarUsuario(email, password) {
   const usuario = db
-    .prepare('SELECT id, nombre, email, rol, password_hash, version_sesion FROM usuarios WHERE email = ? AND activo = 1')
+    .prepare('SELECT id, nombre, email, password_hash, version_sesion FROM usuarios WHERE email = ? AND activo = 1')
     .get(email);
   // Mismo mensaje para correo o contraseña incorrectos: no revelamos cuál falló (RF-01)
   if (!usuario || !(await bcrypt.compare(password, usuario.password_hash))) {
@@ -92,7 +92,7 @@ router.post(
   }),
   async (req, res) => {
     if (!config.codigoTaller) {
-      throw new HttpError(403, 'El registro está deshabilitado. Pide al encargado del taller que cree tu cuenta');
+      throw new HttpError(403, 'El registro de cuentas no está habilitado en este momento');
     }
     if (!igualSeguro(texto(req.body.codigo_taller), config.codigoTaller)) {
       throw new HttpError(403, 'El código del taller no es válido', {
@@ -107,9 +107,9 @@ router.post(
     }
     const hash = await bcrypt.hash(req.body.password, config.rondasBcrypt);
     const { lastInsertRowid } = db
-      .prepare("INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES (?, ?, ?, 'tecnico')")
+      .prepare('INSERT INTO usuarios (nombre, email, password_hash) VALUES (?, ?, ?)')
       .run(texto(req.body.nombre), email, hash);
-    const usuario = db.prepare('SELECT id, nombre, email, rol, fecha_registro FROM usuarios WHERE id = ?').get(lastInsertRowid);
+    const usuario = db.prepare('SELECT id, nombre, email, fecha_registro FROM usuarios WHERE id = ?').get(lastInsertRowid);
     res.status(201).json({ usuario, mensaje: 'Cuenta creada. Ya puedes iniciar sesión' });
   },
 );
