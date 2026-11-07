@@ -11,28 +11,27 @@ Requiere **Node.js 22.13 o superior**.
 cd backend
 npm install
 cp .env.example .env      # en Windows: copy .env.example .env
-npm run seed              # crea el usuario admin de desarrollo (ver SEED_ADMIN_* en .env)
+npm run seed              # crea el usuario de desarrollo (ver SEED_USUARIO_* en .env)
 npm run dev               # http://localhost:3000, se reinicia al guardar cambios
 npm test                  # pruebas de punta a punta (BD en memoria)
 ```
 
 ## Base de datos
 
-- La BD oficial es tarea de **T02/T03** y vive en `database/schema.sql`.
-- Mientras ese archivo no exista, el backend usa `src/db/schema.provisional.sql`, que documenta
-  las tablas y columnas que la API espera. Si el esquema oficial cambia nombres de columnas,
+- La BD oficial es tarea de **T02/T03** y vive en `database/schema.sql`. Si el archivo no existe,
+  el backend no arranca y avisa con un error. Si el esquema cambia nombres de columnas,
   hay que ajustar las consultas en `src/services/` y `src/routes/`.
 - El archivo `.sqlite` se crea solo al arrancar (ruta en `DB_PATH`) y no se sube al repo.
   Si el esquema cambia (p. ej. se agrega una columna), borra tu `.sqlite` local y corre `npm run seed` otra vez.
 
 ## Cuentas del personal
 
-- `npm run seed` crea el primer administrador con los datos `SEED_ADMIN_*` de `.env`.
+- En esta versión no hay roles: todas las cuentas son del personal del taller y tienen los mismos permisos.
+- `npm run seed` crea el usuario de desarrollo con los datos `SEED_USUARIO_*` de `.env`.
 - **Registro (P2):** cualquier persona del taller puede crear su cuenta con el **código del taller**
-  (`CODIGO_TALLER` en `.env`); entra con rol `tecnico`. Sin código configurado, el registro queda deshabilitado.
-- **Administración:** un admin puede crear, editar, cambiar contraseña, cambiar rol o desactivar cuentas en `/api/usuarios`.
+  (`CODIGO_TALLER` en `.env`). Sin código configurado, el registro queda deshabilitado.
 - **Recuperar contraseña (P3):** enlace por correo de un solo uso que caduca en 30 minutos.
-- Desactivar una cuenta o cambiarle la contraseña aplica de inmediato: las sesiones abiertas dejan de funcionar.
+- Cambiar la contraseña aplica de inmediato: las sesiones abiertas dejan de funcionar.
 
 ## Correos
 
@@ -49,7 +48,7 @@ src/
 ├── config.js            # Variables de entorno
 ├── db/conexion.js       # Conexión SQLite y transacciones (2.5)
 ├── middleware/
-│   ├── auth.js          # Verificación JWT y roles (2.2)
+│   ├── auth.js          # Verificación JWT (2.2)
 │   ├── validar.js       # Validación de formato y campos obligatorios (3.1, 3.2, 3.5)
 │   └── subida.js        # Fotos JPG/PNG máx. 5 MB, revisa la firma real del archivo (3.3)
 ├── services/
@@ -70,7 +69,7 @@ src/
 - Errores: `{ "error": "mensaje para el usuario", ...extra }`
   - `400` validación. Trae `campos: [{ campo, mensaje }]` o `pendientes: [...]`.
   - `401` sin sesión, sesión vencida, contraseña cambiada o cuenta desactivada → mandar al login.
-  - `403` sin permiso (rol) o código del taller incorrecto.
+  - `403` código del taller incorrecto o registro deshabilitado.
   - `404` no existe · `409` conflicto (duplicado, orden activa, orden bloqueada).
 - Fotos: se sirven en `/uploads/antes/<archivo>` y `/uploads/despues/<archivo>` (la API regresa la URL).
 - Fechas en ISO 8601 (UTC).
@@ -91,15 +90,11 @@ src/
 
 ### Privados (requieren token)
 
-**Cuenta y administración**
+**Cuenta**
 
 | Método | Ruta | Pantalla | Descripción |
 | :-- | :-- | :-- | :-- |
 | GET | `/api/auth/me` | | Usuario en sesión |
-| GET | `/api/usuarios` | | **Solo admin.** Lista del personal |
-| POST | `/api/usuarios` | | **Solo admin.** `{ nombre, email, password, rol? }` |
-| GET | `/api/usuarios/:id` | | **Solo admin.** Un usuario |
-| PATCH | `/api/usuarios/:id` | | **Solo admin.** `{ nombre?, rol?, activo?, password? }`. Un admin no puede desactivarse ni quitarse el rol a sí mismo |
 
 **Panel**
 
@@ -116,12 +111,12 @@ src/
 | GET | `/api/clientes?telefono=` | P6 | Un cliente por teléfono (para reutilizarlo) |
 | GET | `/api/clientes?q=&orden=nombre\|reciente` | P18 | Lista con número de órdenes y última visita |
 | GET | `/api/clientes/:id` | P18 | Ficha: resumen, equipos y órdenes recientes |
-| POST | `/api/clientes` | P6 | `{ nombre_completo, telefono, email?, aviso_privacidad: true }`. Teléfono existente: `409` con `cliente` |
+| POST | `/api/clientes` | P6 | `{ nombre_completo, telefono, email?, aviso_privacidad: true }`. El teléfono puede venir con espacios o guiones: se guardan solo los 10 dígitos. Teléfono existente: `409` con `cliente` |
 | PATCH | `/api/clientes/:id` | P18 | `{ nombre_completo?, telefono?, email? }` |
 | GET | `/api/dispositivos?imei_o_serie=` | P6 | Un dispositivo por IMEI/serie |
 | GET | `/api/dispositivos?q=&tipo=` | P19 | Lista con propietario, reparaciones certificadas y orden activa |
 | POST | `/api/dispositivos` | P6 | `{ cliente_id, tipo, marca, modelo, color?, imei_o_serie, contrasena_equipo? }`. Existente: `409` con `dispositivo` |
-| PATCH | `/api/dispositivos/:id` | P18 | Edita el equipo. Con certificados emitidos solo cambian color y contraseña |
+| PATCH | `/api/dispositivos/:id` | P18 | Edita el equipo mientras no tenga certificados emitidos. Si ya tiene uno, no se puede modificar nada (`409`) |
 | GET | `/api/dispositivos/:id/historial` | P20 | Reparaciones con piezas y garantía, orden activa y primera visita (RF-15) |
 
 **Órdenes**
@@ -138,8 +133,8 @@ src/
 | PUT | `/api/ordenes/:id/refacciones/:refaccionId` | P8 | Editar pieza |
 | DELETE | `/api/ordenes/:id/refacciones/:refaccionId` | P8 | Eliminar pieza |
 | PUT | `/api/ordenes/:id/garantia` | P7 | `{ dias_garantia, terminos_garantia }` |
-| GET | `/api/ordenes/:id/nota-servicio` | P12 | Datos para imprimir la nota de recepción + `estatus.qr` (QR a la página de estatus) |
-| GET | `/api/ordenes/:id/certificado` | P13 | Datos para imprimir el certificado + `qr` (PNG en data URL) |
+| GET | `/api/ordenes/:id/nota-servicio` | P12 | Datos para imprimir la nota de recepción + `estatus.qr` (QR a la página de estatus). Sin la contraseña del equipo |
+| GET | `/api/ordenes/:id/certificado` | P13 | Datos para imprimir el certificado + `qr` (PNG en data URL). Solo lo que se le hizo al equipo: sin datos del cliente ni contraseña del equipo, IMEI enmascarado |
 | GET | `/api/ordenes/:id/avisos` | P10 | Avisos enviados y `tipos` disponibles |
 | GET | `/api/ordenes/:id/avisos/vista-previa?tipo=&adicional=` | P10 | Mensaje tal como lo verá el cliente |
 | POST | `/api/ordenes/:id/avisos` | P10 | `{ tipo, en_estatus?: true, por_correo?: false, adicional? }`. `tipo`: actualizacion_estado, requiere_autorizacion, listo_para_recoger |

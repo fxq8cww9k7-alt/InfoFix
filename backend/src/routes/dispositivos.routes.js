@@ -98,12 +98,26 @@ router.post(
 );
 
 /**
- * Edición del equipo (P18). Si el equipo ya tiene certificados emitidos, sus datos de
- * identificación (tipo, marca, modelo, IMEI) no se pueden cambiar porque aparecen en ellos.
+ * Edición del equipo (P18).
+ * - Mientras el equipo no tenga ningún certificado emitido, se pueden editar todos sus datos
+ *   (con las mismas validaciones que al registrarlo).
+ * - En cuanto tiene al menos un certificado, ya no se puede modificar nada (ni color ni
+ *   contraseña) y se responde 409. El certificado "congela" los datos del equipo, así que lo
+ *   más simple y claro es que un equipo certificado ya no se toque.
  */
 router.patch('/:id', (req, res) => {
   const actual = obtener(idValido(req.params.id));
   if (!actual) throw new HttpError(404, 'Dispositivo no encontrado');
+
+  // Primero revisamos si ya tiene certificado, antes de validar o comparar lo que mandaron:
+  // si lo tiene, cualquier PATCH (aunque venga vacío o con los mismos datos) se rechaza.
+  const certificados = db
+    .prepare('SELECT COUNT(*) AS n FROM certificados c JOIN ordenes o ON o.id = c.orden_id WHERE o.dispositivo_id = ?')
+    .get(actual.id).n;
+  if (certificados) {
+    throw new HttpError(409, 'Este equipo ya tiene un certificado emitido, por eso sus datos ya no se pueden modificar');
+  }
+
   const body = req.body || {};
   const nuevo = {
     tipo: body.tipo === undefined ? actual.tipo : texto(body.tipo),
@@ -123,15 +137,6 @@ router.patch('/:id', (req, res) => {
     imei_o_serie: [imeiOSerie],
   })({ body: nuevo }, res, () => {});
 
-  const cambiaIdentidad = ['tipo', 'marca', 'modelo', 'imei_o_serie'].some((c) => nuevo[c] !== actual[c]);
-  if (cambiaIdentidad) {
-    const certificados = db
-      .prepare('SELECT COUNT(*) AS n FROM certificados c JOIN ordenes o ON o.id = c.orden_id WHERE o.dispositivo_id = ?')
-      .get(actual.id).n;
-    if (certificados) {
-      throw new HttpError(409, 'El equipo ya tiene certificados emitidos: solo se pueden cambiar el color y la contraseña');
-    }
-  }
   if (nuevo.imei_o_serie !== actual.imei_o_serie) {
     const otro = db.prepare('SELECT id FROM dispositivos WHERE imei_o_serie = ?').get(nuevo.imei_o_serie);
     if (otro) throw new HttpError(409, 'Ya existe otro dispositivo con ese IMEI o número de serie');

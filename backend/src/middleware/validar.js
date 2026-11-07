@@ -13,6 +13,16 @@ const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const texto = (v) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '');
 
 /**
+ * Quita espacios (de cualquier tipo) y guiones del teléfono antes de validarlo o guardarlo,
+ * para que "33 1234-5678" quede como "3312345678". No quita nada más: si queda una letra,
+ * un "+", un paréntesis o un punto, la regla `telefono` lo rechaza igual que siempre.
+ *
+ * @param {*} valor - Lo que mandó el cliente (texto, número o undefined).
+ * @returns {string} El teléfono sin espacios ni guiones ('' si no venía nada).
+ */
+const limpiarTelefono = (valor) => texto(valor).replace(/[\s-]/g, '');
+
+/**
  * Reglas reutilizables. Cada una recibe el valor y regresa un mensaje de error o null.
  */
 const reglas = {
@@ -20,8 +30,9 @@ const reglas = {
   minimo: (n, mensaje) => (v) => (texto(v).length >= n ? null : mensaje),
   email: (mensaje) => (v) => (RE_EMAIL.test(texto(v)) ? null : mensaje),
   emailOpcional: (mensaje) => (v) => (!texto(v) || RE_EMAIL.test(texto(v)) ? null : mensaje),
+  // Se valida el teléfono ya limpio (sin espacios ni guiones), que es lo que se guarda
   telefono: () => (v) =>
-    /^\d{10}$/.test(texto(v)) ? null : 'El número de teléfono debe contener exactamente 10 dígitos',
+    /^\d{10}$/.test(limpiarTelefono(v)) ? null : 'El número de teléfono debe contener exactamente 10 dígitos',
   enLista: (lista, mensaje) => (v) => (lista.includes(texto(v)) ? null : mensaje),
   enteroNoNegativo: (mensaje) => (v) =>
     Number.isInteger(Number(v)) && Number(v) >= 0 && String(v).trim() !== '' ? null : mensaje,
@@ -89,4 +100,4 @@ function idValido(valor) {
   return id;
 }
 
-module.exports = { validar, reglas, imeiOSerie, idValido, texto, RE_EMAIL, RE_UUID };
+module.exports = { validar, reglas, imeiOSerie, idValido, texto, limpiarTelefono, RE_EMAIL, RE_UUID };
