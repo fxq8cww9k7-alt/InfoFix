@@ -1,3 +1,9 @@
+/**
+ * @file PublicVerifyPage.jsx
+ * @description Página pública de verificación de autenticidad del certificado digital y garantía (post-servicio) (RF-12, RF-15).
+ * @author Yahúm Adair Hernández Martínez
+ */
+
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { publicApi } from '../api/client';
@@ -5,12 +11,11 @@ import {
   ShieldCheck,
   AlertCircle,
   Smartphone,
-  CheckCircle,
-  Calendar,
   Layers,
   Award,
-  Clock,
   Printer,
+  Image as ImageIcon,
+  History,
 } from 'lucide-react';
 
 export default function PublicVerifyPage() {
@@ -28,6 +33,15 @@ export default function PublicVerifyPage() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [token]);
+
+  // Función auxiliar para asegurar el enmascaramiento de la serie o imei (RF-12: mostrar solo últimos 4 caracteres)
+  const formatearIdentificadorPublico = (valor) => {
+    if (!valor) return 'N/A';
+    if (valor.includes('*')) return valor; // Si el backend ya lo manda enmascarado
+    const str = String(valor);
+    if (str.length <= 4) return str;
+    return '*'.repeat(str.length - 4) + str.slice(-4);
+  };
 
   if (loading) {
     return (
@@ -47,9 +61,9 @@ export default function PublicVerifyPage() {
           <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto mb-4">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-white mb-2">Certificado no válido</h2>
+          <h2 className="text-lg font-bold text-white mb-2">Certificado no encontrado</h2>
           <p className="text-xs text-slate-400 leading-relaxed mb-6">
-            {error || 'El identificador no corresponde a ningún certificado oficial emitido.'}
+            {error || 'Certificado no encontrado. Verifique que el enlace o código QR corresponda a un certificado emitido por el taller.'}
           </p>
           <Link
             to="/"
@@ -62,7 +76,20 @@ export default function PublicVerifyPage() {
     );
   }
 
-  const { folio, token: certToken, fecha_emision, dispositivo, fecha_recepcion, fecha_entrega, falla_reportada, refacciones, garantia, evidencias } = data;
+  const {
+    folio,
+    token: certToken,
+    fecha_emision,
+    dispositivo,
+    fecha_recepcion,
+    fecha_entrega,
+    falla_reportada,
+    refacciones,
+    garantia,
+    evidencias,
+    total_reparaciones_equipo,
+  } = data;
+
   const garantiaVigente = garantia?.vigente;
 
   return (
@@ -92,7 +119,7 @@ export default function PublicVerifyPage() {
       <main className="max-w-3xl mx-auto px-4 pt-6 space-y-6">
         {/* Cabecera del Certificado */}
         <div className="bg-gradient-to-b from-slate-900 to-slate-900/60 border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden print:border-black print:bg-none print:shadow-none">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none print:hidden" />
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80 print:border-black">
             <div>
@@ -104,18 +131,20 @@ export default function PublicVerifyPage() {
                 Garantía y Trazabilidad de Servicio
               </h1>
               <p className="text-xs text-slate-400 font-mono mt-1 print:text-gray-600">
-                Folio Oficial: <span className="text-emerald-400 font-bold">{folio}</span>
+                Folio Oficial: <span className="text-emerald-400 font-bold print:text-black">{folio}</span>
               </p>
             </div>
 
             <div className="text-left sm:text-right font-mono">
               <span className="text-[10px] text-slate-500 block uppercase">EMITIDO EL</span>
               <span className="text-xs text-slate-300 font-semibold print:text-black">
-                {new Date(fecha_emision).toLocaleDateString('es-MX', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                {fecha_emision
+                  ? new Date(fecha_emision).toLocaleDateString('es-MX', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                    })
+                  : 'Fecha registrada'}
               </span>
             </div>
           </div>
@@ -132,60 +161,85 @@ export default function PublicVerifyPage() {
                 />
                 <span
                   className={`text-sm font-bold ${
-                    garantiaVigente ? 'text-emerald-400' : 'text-rose-400'
+                    garantiaVigente ? 'text-emerald-400 print:text-black' : 'text-rose-400 print:text-black'
                   }`}
                 >
                   {garantiaVigente ? 'GARANTÍA VIGENTE' : 'GARANTÍA VENCIDA'}
                 </span>
               </div>
             </div>
-            <div className="text-right text-xs font-mono text-slate-400">
-              <span>{garantia?.dias} días de cobertura</span>
-              <span className="block text-[10px] text-slate-500">
-                Vence: {new Date(garantia?.fecha_fin).toLocaleDateString('es-MX')}
-              </span>
+            <div className="text-right text-xs font-mono text-slate-400 print:text-black">
+              <span>{garantia?.dias || 0} días de cobertura</span>
+              {garantia?.fecha_fin && (
+                <span className="block text-[10px] text-slate-500 print:text-gray-600">
+                  Vence: {new Date(garantia.fecha_fin).toLocaleDateString('es-MX')}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Datos del Equipo */}
+          {/* Datos del Equipo y Fechas de Servicio */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/60">
+            <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/60 print:border-gray-300">
               <span className="text-[10px] font-mono uppercase text-slate-500 block mb-1">
                 DISPOSITIVO CERTIFICADO
               </span>
               <div className="text-sm font-bold text-white print:text-black">
-                {dispositivo.marca} {dispositivo.modelo}
+                {dispositivo?.marca} {dispositivo?.modelo}
               </div>
-              <div className="text-xs text-slate-400 capitalize mt-0.5">
-                {dispositivo.tipo} • IMEI/Serie: <span className="font-mono text-slate-300">{dispositivo.imei_o_serie}</span>
+              <div className="text-xs text-slate-400 mt-1 space-y-0.5 print:text-gray-700">
+                <span className="block capitalize">Tipo: {dispositivo?.tipo}</span>
+                <span className="block font-mono text-slate-300 print:text-black">
+                  IMEI/Serie: {formatearIdentificadorPublico(dispositivo?.imei_o_serie)}
+                </span>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/60">
+            <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/60 print:border-gray-300">
               <span className="text-[10px] font-mono uppercase text-slate-500 block mb-1">
                 FALLA REPORTADA EN RECEPCIÓN
               </span>
               <p className="text-xs text-slate-300 leading-relaxed print:text-black">
                 {falla_reportada}
               </p>
+              {(fecha_recepcion || fecha_entrega) && (
+                <div className="mt-2 pt-2 border-t border-slate-800/60 text-[10px] font-mono text-slate-400 flex justify-between">
+                  {fecha_recepcion && (
+                    <span>Ingreso: {new Date(fecha_recepcion).toLocaleDateString('es-MX')}</span>
+                  )}
+                  {fecha_entrega && (
+                    <span>Entrega: {new Date(fecha_entrega).toLocaleDateString('es-MX')}</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Refacciones Utilizadas */}
+          {/* Historial Acumulado del Dispositivo (RF-15) */}
+          <div className="mt-4 p-3 rounded-xl bg-slate-950/40 border border-slate-800/60 flex items-center gap-2.5 text-xs text-slate-300 print:border-gray-300 print:text-black">
+            <History className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              {total_reparaciones_equipo && total_reparaciones_equipo > 1
+                ? `Este dispositivo acumula ${total_reparaciones_equipo} reparaciones certificadas registradas en el taller.`
+                : 'Primera reparación certificada registrada para este equipo.'}
+            </span>
+          </div>
+
+          {/* Refacciones Utilizadas (RF-08) */}
           {refacciones && refacciones.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-slate-800/80">
-              <h3 className="text-xs font-mono uppercase font-bold text-slate-400 mb-3 flex items-center gap-2">
+            <div className="mt-6 pt-6 border-t border-slate-800/80 print:border-gray-300">
+              <h3 className="text-xs font-mono uppercase font-bold text-slate-400 mb-3 flex items-center gap-2 print:text-black">
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                Refacciones y Componentes Sustituidos (RF-07)
+                Refacciones y Componentes Sustituidos
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {refacciones.map((ref, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs flex justify-between items-center"
+                    className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs flex justify-between items-center print:border-gray-300"
                   >
                     <span className="font-medium text-slate-200 print:text-black">{ref.nombre}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 capitalize">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 capitalize print:text-black print:border-gray-400">
                       {ref.tipo}
                     </span>
                   </div>
@@ -194,20 +248,57 @@ export default function PublicVerifyPage() {
             </div>
           )}
 
+          {/* Evidencias Fotográficas Antes / Después (RF-07 / RF-12) */}
+          {evidencias && (evidencias.antes?.length > 0 || evidencias.despues?.length > 0 || evidencias.length > 0) && (
+            <div className="mt-6 pt-6 border-t border-slate-800/80 print:hidden">
+              <h3 className="text-xs font-mono uppercase font-bold text-slate-400 mb-3 flex items-center gap-2">
+                <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                Evidencia Fotográfica del Servicio (Antes y Después)
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {(Array.isArray(evidencias)
+                  ? evidencias
+                  : [...(evidencias.antes || []), ...(evidencias.despues || [])]
+                ).map((ev, idx) => {
+                  const urlImagen = typeof ev === 'string' ? `/uploads/${ev}` : `/uploads/${ev.archivo || ev.url}`;
+                  const etapa = typeof ev === 'object' && ev.etapa ? ev.etapa : idx === 0 ? 'Antes' : 'Después';
+                  return (
+                    <a
+                      key={idx}
+                      href={urlImagen}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="aspect-square rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group relative block"
+                    >
+                      <img
+                        src={urlImagen}
+                        alt={`Evidencia ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <span className="absolute bottom-1.5 right-1.5 text-[9px] font-mono uppercase bg-slate-950/80 px-2 py-0.5 rounded text-emerald-300 border border-emerald-500/20">
+                        {etapa}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Términos de Garantía */}
           {garantia?.terminos && (
-            <div className="mt-6 pt-6 border-t border-slate-800/80">
-              <h3 className="text-xs font-mono uppercase font-bold text-slate-400 mb-2">
+            <div className="mt-6 pt-6 border-t border-slate-800/80 print:border-gray-300">
+              <h3 className="text-xs font-mono uppercase font-bold text-slate-400 mb-2 print:text-black">
                 Términos y Condiciones de la Garantía
               </h3>
-              <p className="text-xs text-slate-400 leading-relaxed bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 print:text-black">
+              <p className="text-xs text-slate-400 leading-relaxed bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 print:text-black print:border-gray-300">
                 {garantia.terminos}
               </p>
             </div>
           )}
 
           {/* Identificador Criptográfico / UUID */}
-          <div className="mt-8 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] font-mono text-slate-500">
+          <div className="mt-8 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] font-mono text-slate-500 print:border-gray-300 print:text-black">
             <span>Sello digital UUID: {certToken}</span>
             <span>NOM-174-SCFI-2007 • InfoFIX CUCEI</span>
           </div>
