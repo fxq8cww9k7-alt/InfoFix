@@ -12,11 +12,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre          TEXT    NOT NULL CHECK (length(trim(nombre)) > 0),
   email           TEXT    NOT NULL UNIQUE COLLATE NOCASE CHECK (email LIKE '%_@_%._%'),
   password_hash   TEXT    NOT NULL CHECK (length(password_hash) >= 50),   -- bcrypt: 60 caracteres
-  rol             TEXT    NOT NULL DEFAULT 'tecnico' CHECK (rol IN ('admin', 'tecnico')),
   activo          INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),     -- 0 = no puede iniciar sesión
   version_sesion  INTEGER NOT NULL DEFAULT 0 CHECK (version_sesion >= 0),  -- se incrementa para invalidar los JWT ya emitidos
   fecha_registro  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+-- SE BORRO LA COLUMNA DE ROL DONDE SE DEFINIA COMO TECNICO O ADMIN
 
 -- Enlaces de recuperación de contraseña: un solo uso, 30 minutos. Solo se guarda el hash del token
 CREATE TABLE IF NOT EXISTS recuperaciones (
@@ -347,14 +347,12 @@ BEGIN
   SELECT RAISE(ABORT, 'Un certificado emitido no se puede eliminar');
 END;
 
--- Si el equipo ya aparece en un certificado, su identificación no cambia (solo color y contraseña)
-CREATE TRIGGER IF NOT EXISTS trg_dispositivos_identidad_certificada
-BEFORE UPDATE OF tipo, marca, modelo, imei_o_serie ON dispositivos
-WHEN (NEW.tipo IS NOT OLD.tipo
-      OR NEW.marca IS NOT OLD.marca
-      OR NEW.modelo IS NOT OLD.modelo
-      OR NEW.imei_o_serie IS NOT OLD.imei_o_serie)
- AND EXISTS (SELECT 1 FROM certificados c JOIN ordenes o ON o.id = c.orden_id WHERE o.dispositivo_id = OLD.id)
+-- Si el equipo ya aparece en un certificado, no se puede modificar NADA de él
+DROP TRIGGER IF EXISTS trg_dispositivos_identidad_certificada;
+CREATE TRIGGER trg_dispositivos_identidad_certificada
+BEFORE UPDATE ON dispositivos
+WHEN EXISTS (SELECT 1 FROM certificados c JOIN ordenes o ON o.id = c.orden_id
+             WHERE o.dispositivo_id = OLD.id)
 BEGIN
-  SELECT RAISE(ABORT, 'El equipo ya tiene certificados emitidos: solo se pueden cambiar el color y la contraseña');
+  SELECT RAISE(ABORT, 'El equipo ya tiene certificados emitidos: no se puede modificar');
 END;
