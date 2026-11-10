@@ -1,352 +1,549 @@
+/**
+ * @file AuthPage.jsx
+ * @description Pantallas de Inicio de sesión (P1), Registro de usuario (P2) y Recuperación de contraseña (P3).
+ * @task T07 (RF-01)
+ * @author Yahúm Adair Hernández Martínez
+ */
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, Shield, Lock, Mail, User, KeyRound, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, AlertCircle, Check, Mail, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/client';
 
+/**
+ * Calcula el nivel de seguridad de la contraseña según las reglas de negocio (mín. 8 caracteres y 1 número).
+ *
+ * @param {string} password Contraseña a evaluar.
+ * @returns {{ nivel: number, etiqueta: string, cumpleMinimo: boolean }}
+ */
+function evaluarSeguridadPassword(password) {
+  if (!password) return { nivel: 0, etiqueta: 'Sin contraseña', cumpleMinimo: false };
+  const tieneOcho = password.length >= 8;
+  const tieneNumero = /\d/.test(password);
+  const tieneMayuscula = /[A-Z]/.test(password);
+  const tieneSimbolo = /[^A-Za-z0-9]/.test(password);
+
+  const cumpleMinimo = tieneOcho && tieneNumero;
+  let puntos = 0;
+  if (tieneOcho) puntos++;
+  if (tieneNumero) puntos++;
+  if (tieneMayuscula) puntos++;
+  if (tieneSimbolo || password.length >= 12) puntos++;
+
+  const etiquetas = ['Muy débil', 'Débil', 'Regular', 'Buena', 'Excelente'];
+  return {
+    nivel: puntos,
+    etiqueta: etiquetas[puntos] || 'Buena',
+    cumpleMinimo,
+  };
+}
+
 export default function AuthPage() {
-  const [tab, setTab] = useState('login'); // 'login' | 'registro' | 'recuperar'
+  // Modos: 'login' (P1) | 'registro' (P2) | 'cuenta_creada' (P2 variante) | 'recuperar' (P3) | 'correo_enviado' (P3 variante)
+  const [modo, setModo] = useState('login');
+  const [mantenerSesion, setMantenerSesion] = useState(true);
+
   const { login, registro } = useAuth();
   const navigate = useNavigate();
 
-  // Estados de formulario
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
     password: '',
     confirmar_password: '',
-    codigo_taller: '',
+    codigo_taller: 'TALLER-EL-FIX', // Valor por defecto en caso de que el backend lo requiera
   });
 
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [usuarioCreado, setUsuarioCreado] = useState(null);
+
+  const seguridad = evaluarSeguridadPassword(formData.password);
+  const passwordsNoCoinciden =
+    modo === 'registro' &&
+    formData.confirmar_password.length > 0 &&
+    formData.password !== formData.confirmar_password;
+
+  const cambiarModo = (nuevoModo) => {
+    setModo(nuevoModo);
+    setError(null);
+  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError(null);
   };
 
+  /**
+   * Procesa el inicio de sesión del personal del taller (RF-01).
+   * Limpia los campos en caso de error según especifica la ERS.
+   */
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      await login(formData.email, formData.password);
+      await login(formData.email.trim(), formData.password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      // RF-01: Limpiar campos de contraseña al fallar y mostrar mensaje estándar
+      setFormData((prev) => ({ ...prev, password: '' }));
+      setError(err.message || 'Correo o contraseña incorrectos');
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Procesa el registro de un nuevo técnico o encargado del taller (P2).
+   */
   const handleRegistro = async (e) => {
     e.preventDefault();
+    if (formData.password !== formData.confirmar_password) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+    if (!seguridad.cumpleMinimo) {
+      setError('La contraseña debe tener mínimo 8 caracteres y al menos 1 número');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      await registro(formData);
-      navigate('/dashboard');
+      const user = await registro({
+        nombre: formData.nombre.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        confirmar_password: formData.confirmar_password,
+        codigo_taller: formData.codigo_taller,
+      });
+      setUsuarioCreado(user || { nombre: formData.nombre, rol: 'Técnico' });
+      setModo('cuenta_creada');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'No se pudo crear la cuenta. Verifica tus datos.');
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Envía solicitud de enlace de recuperación de contraseña (P3).
+   */
   const handleRecuperar = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const res = await authApi.recuperar(formData.email);
-      setSuccess(res.mensaje || 'Si la cuenta existe, se enviaron las instrucciones a tu correo.');
+      await authApi.recuperar(formData.email.trim());
+      setModo('correo_enviado');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'No se pudo procesar la solicitud.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Textos dinámicos del panel izquierdo según la pantalla activa (P1, P2, P3)
+  const obtenerTituloLateral = () => {
+    if (modo === 'registro' || modo === 'cuenta_creada') {
+      return (
+        <>
+          Únete al <span className="text-[#5B9BD5]">equipo de tu taller.</span>
+        </>
+      );
+    }
+    if (modo === 'recuperar' || modo === 'correo_enviado') {
+      return (
+        <>
+          Recupera el <span className="text-[#5B9BD5]">acceso a tu panel.</span>
+        </>
+      );
+    }
+    return (
+      <>
+        Cada reparación,{' '}
+        <span className="text-[#5B9BD5] block mt-1">registrada y verificable.</span>
+      </>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
-      {/* Fondo técnico sutil */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(14,165,233,0.12),rgba(255,255,255,0))] pointer-events-none" />
-
-      {/* Tarjeta principal con acabado industrial */}
-      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl relative z-10 overflow-hidden">
-        {/* Cabecera / Identidad */}
-        <div className="p-6 border-b border-slate-800/80 bg-slate-950/40">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <Wrench className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold tracking-tight text-lg text-white">InfoFIX</span>
-                  <span className="text-[9px] uppercase font-mono font-bold tracking-widest px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">
-                    TALLER
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400">Control y Trazabilidad de Reparaciones</p>
-              </div>
+    <div className="min-h-screen flex flex-col lg:flex-row bg-white font-sans text-[#0B0D12]">
+      {/* COLUMNA IZQUIERDA: Identidad visual de InfoFIX (Navy 950 -> Navy 800) */}
+      <div className="lg:w-[46%] bg-gradient-to-br from-[#0A0F1F] via-[#0D1B3E] to-[#12284A] text-white p-8 lg:p-14 flex flex-col justify-center relative overflow-hidden">
+        <div>
+          {/* Logo InfoFIX */}
+          <div className="flex items-center gap-3 mb-12 lg:mb-20">
+            <div className="w-9 h-9 rounded-lg bg-[#24529F] flex items-center justify-center shadow-sm">
+              <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <div className="text-right">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="block text-[10px] font-mono text-slate-500 mt-0.5">ONLINE</span>
-            </div>
+            <span className="text-xl font-bold tracking-tight text-white">InfoFIX</span>
           </div>
 
-          {/* Selector de pestañas */}
-          <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl mt-6 border border-slate-800/80 text-xs font-medium">
-            <button
-              type="button"
-              onClick={() => { setTab('login'); setError(null); setSuccess(null); }}
-              className={`py-2 rounded-lg transition-all active:scale-[0.98] ${
-                tab === 'login'
-                  ? 'bg-slate-800 text-white shadow-sm font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Ingresar
-            </button>
-            <button
-              type="button"
-              onClick={() => { setTab('registro'); setError(null); setSuccess(null); }}
-              className={`py-2 rounded-lg transition-all active:scale-[0.98] ${
-                tab === 'registro'
-                  ? 'bg-slate-800 text-white shadow-sm font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Registro
-            </button>
-            <button
-              type="button"
-              onClick={() => { setTab('recuperar'); setError(null); setSuccess(null); }}
-              className={`py-2 rounded-lg transition-all active:scale-[0.98] ${
-                tab === 'recuperar'
-                  ? 'bg-slate-800 text-white shadow-sm font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Ayuda
-            </button>
-          </div>
+          {/* Mensaje principal */}
+          <h1 className="text-3xl lg:text-[40px] font-bold leading-[1.15] tracking-tight max-w-md">
+            {obtenerTituloLateral()}
+          </h1>
+
+          {modo === 'login' && (
+            <p className="mt-5 text-sm lg:text-base text-slate-300/90 leading-relaxed max-w-md">
+              Registra el equipo, documenta cada etapa con fotos y entrega un certificado con QR que tu
+              cliente puede comprobar sin crear cuenta.
+            </p>
+          )}
         </div>
+      </div>
 
-        {/* Notificaciones de error o éxito */}
-        {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-rose-300 text-xs animate-in fade-in duration-200">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-            <span>{error}</span>
-          </div>
-        )}
+      {/* COLUMNA DERECHA: Formularios sobre fondo blanco */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 lg:p-16 bg-white">
+        <div className="w-full max-w-[420px]">
+          {/* ==================== P1: INICIAR SESIÓN ==================== */}
+          {modo === 'login' && (
+            <div>
+              <h2 className="text-2xl lg:text-[28px] font-bold text-[#0B0D12] tracking-tight">
+                Iniciar sesión
+              </h2>
+              <p className="text-sm text-[#5A6578] mt-1.5 mb-7">
+                Acceso exclusivo para el personal del taller.
+              </p>
 
-        {success && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5 text-emerald-300 text-xs animate-in fade-in duration-200">
-            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
-            <span>{success}</span>
-          </div>
-        )}
-
-        {/* Formularios */}
-        <div className="p-6">
-          {tab === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1.5">
-                  Correo Electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
+                    Correo electrónico
+                  </label>
                   <input
                     type="email"
                     name="email"
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="tecnico@infofix.local"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+                    placeholder="tecnico@tallerelfix.mx"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] placeholder-slate-400 focus:outline-none focus:border-[#24529F] focus:ring-2 focus:ring-[#24529F]/15 transition-all"
                   />
                 </div>
-              </div>
 
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
                     Contraseña
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setTab('recuperar')}
-                    className="text-[11px] text-cyan-400 hover:text-cyan-300"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                   <input
                     type="password"
                     name="password"
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+                    placeholder="••••••••••"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] placeholder-slate-400 focus:outline-none focus:border-[#24529F] focus:ring-2 focus:ring-[#24529F]/15 transition-all"
                   />
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
-              >
-                {loading ? 'Validando...' : 'Iniciar Sesión'}
-                {!loading && <ArrowRight className="w-4 h-4" />}
-              </button>
-            </form>
+                {/* Mantener sesión y ¿Olvidaste tu contraseña? */}
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <label className="flex items-center gap-2 text-[#1E2430] cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={mantenerSesion}
+                      onChange={(e) => setMantenerSesion(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-[#0D1B3E] focus:ring-[#24529F]"
+                    />
+                    <span>Mantener sesión</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => cambiarModo('recuperar')}
+                    className="text-[#5A6578] hover:text-[#0D1B3E] font-medium transition-colors"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#0D1B3E] hover:bg-[#12284A] text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-sm disabled:opacity-60 cursor-pointer"
+                >
+                  {loading ? 'Verificando acceso...' : 'Entrar al panel'}
+                </button>
+
+                {/* Alerta de error RF-01 */}
+                {error && (
+                  <div className="p-3.5 rounded-xl bg-[#FDECEC] border border-[#F8B4B4] flex items-start gap-2.5 text-[#C53030] text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Correo o contraseña incorrectos</p>
+                      <p className="text-[#C53030]/80 mt-0.5">
+                        Revisa tus datos e inténtalo de nuevo. Los campos se limpiaron por seguridad.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </form>
+
+              <p className="mt-8 text-xs text-[#5A6578]">
+                ¿No tienes cuenta?{' '}
+                <button
+                  type="button"
+                  onClick={() => cambiarModo('registro')}
+                  className="font-semibold text-[#0D1B3E] hover:underline cursor-pointer"
+                >
+                  Crear cuenta
+                </button>
+              </p>
+            </div>
           )}
 
-          {tab === 'registro' && (
-            <form onSubmit={handleRegistro} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                  Nombre Completo
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+          {/* ==================== P2: REGISTRO DE USUARIO ==================== */}
+          {modo === 'registro' && (
+            <div>
+              <h2 className="text-2xl lg:text-[28px] font-bold text-[#0B0D12] tracking-tight">
+                Crear cuenta
+              </h2>
+              <p className="text-sm text-[#5A6578] mt-1.5 mb-7">
+                Registra al personal del taller para que pueda entrar al panel.
+              </p>
+
+              <form onSubmit={handleRegistro} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
+                    Nombre completo <span className="text-[#C53030]">*</span>
+                  </label>
                   <input
                     type="text"
                     name="nombre"
                     required
                     value={formData.nombre}
                     onChange={handleChange}
-                    placeholder="Ej. Yahúm Hernández"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    placeholder="Marco Yahir Guzmán Gasca"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] placeholder-slate-400 focus:outline-none focus:border-[#24529F]"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                  Correo Electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
+                    Correo electrónico <span className="text-[#C53030]">*</span>
+                  </label>
                   <input
                     type="email"
                     name="email"
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="usuario@dominio.com"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    placeholder="marco.guzman@tallerelfix.mx"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] placeholder-slate-400 focus:outline-none focus:border-[#24529F]"
                   />
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
+                      Contraseña <span className="text-[#C53030]">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="••••••••••"
+                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] focus:outline-none focus:border-[#24529F]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
+                      Confirmar contraseña <span className="text-[#C53030]">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="confirmar_password"
+                      required
+                      value={formData.confirmar_password}
+                      onChange={handleChange}
+                      placeholder="••••••••••"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] focus:outline-none ${
+                        passwordsNoCoinciden
+                          ? 'border-[#C53030] bg-[#FDECEC]/30'
+                          : 'border-slate-300 focus:border-[#24529F]'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Error en vivo si las contraseñas no coinciden */}
+                {passwordsNoCoinciden && (
+                  <p className="text-xs text-[#C53030] flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Las contraseñas no coinciden
+                  </p>
+                )}
+
+                {/* Medidor de seguridad de contraseña (P2 Figma) */}
+                <div className="pt-1">
+                  <div className="grid grid-cols-4 gap-1.5 mb-1.5">
+                    {[1, 2, 3, 4].map((barra) => (
+                      <div
+                        key={barra}
+                        className={`h-1 rounded-full transition-colors ${
+                          seguridad.nivel >= barra ? 'bg-[#1F8A4C]' : 'bg-slate-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-[11px] text-[#5A6578]">
+                    <span>Seguridad: {seguridad.etiqueta.toLowerCase()}</span>
+                    <span>Mín. 8 caracteres, 1 número</span>
+                  </div>
+                </div>
+
+                {error && !passwordsNoCoinciden && (
+                  <div className="p-3 rounded-xl bg-[#FDECEC] border border-[#F8B4B4] flex items-center gap-2 text-[#C53030] text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#0D1B3E] hover:bg-[#12284A] text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-sm disabled:opacity-60 cursor-pointer mt-2"
+                >
+                  {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+                </button>
+              </form>
+
+              <p className="mt-6 text-xs text-[#5A6578]">
+                ¿Ya tienes cuenta?{' '}
+                <button
+                  type="button"
+                  onClick={() => cambiarModo('login')}
+                  className="font-semibold text-[#0D1B3E] hover:underline cursor-pointer"
+                >
+                  Inicia sesión
+                </button>
+              </p>
+            </div>
+          )}
+
+          {/* ==================== P2 VARIANTE: CUENTA CREADA ==================== */}
+          {modo === 'cuenta_creada' && (
+            <div className="text-center py-6">
+              <div className="w-14 h-14 rounded-full bg-[#E3F4EC] text-[#1F8A4C] flex items-center justify-center mx-auto mb-5">
+                <Check className="w-7 h-7 stroke-[2.5]" />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                    Contraseña
-                  </label>
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="≥ 8 caracteres"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                    Confirmar
-                  </label>
-                  <input
-                    type="password"
-                    name="confirmar_password"
-                    required
-                    value={formData.confirmar_password}
-                    onChange={handleChange}
-                    placeholder="Repetir"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
+              <h2 className="text-2xl font-bold text-[#0B0D12]">Cuenta creada</h2>
+              <p className="text-sm text-[#5A6578] mt-1 mb-6">Bienvenido a InfoFIX</p>
 
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-amber-400/90 mb-1 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5" />
-                  Código del Taller
-                </label>
-                <input
-                  type="text"
-                  name="codigo_taller"
-                  required
-                  value={formData.codigo_taller}
-                  onChange={handleChange}
-                  placeholder="Proporcionado por el administrador"
-                  className="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-400"
-                />
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center gap-3 text-left mb-6">
+                <div className="w-8 h-8 rounded-full bg-[#1F8A4C] text-white flex items-center justify-center shrink-0">
+                  <Check className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#0B0D12]">Cuenta creada</p>
+                  <p className="text-xs text-[#5A6578]">
+                    {usuarioCreado?.nombre || formData.nombre} · Técnico
+                  </p>
+                </div>
               </div>
 
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/20 active:scale-[0.98] disabled:opacity-50 text-sm"
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="w-full border border-slate-300 hover:bg-slate-50 text-[#0B0D12] font-semibold py-2.5 rounded-xl text-sm transition-all cursor-pointer"
               >
-                {loading ? 'Creando cuenta...' : 'Registrar Técnico'}
+                Ir al panel / Volver a iniciar sesión
               </button>
-            </form>
+            </div>
           )}
 
-          {tab === 'recuperar' && (
-            <form onSubmit={handleRecuperar} className="space-y-4">
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Ingresa tu correo institucional registrado. Si existe en el sistema, recibirás un enlace de un solo uso que expira en 30 minutos.
+          {/* ==================== P3: RECUPERAR CONTRASEÑA ==================== */}
+          {modo === 'recuperar' && (
+            <div>
+              <button
+                type="button"
+                onClick={() => cambiarModo('login')}
+                className="inline-flex items-center gap-1.5 text-xs text-[#5A6578] hover:text-[#0D1B3E] font-medium mb-6 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Volver a iniciar sesión
+              </button>
+
+              <h2 className="text-2xl lg:text-[28px] font-bold text-[#0B0D12] tracking-tight">
+                Recuperar contraseña
+              </h2>
+              <p className="text-sm text-[#5A6578] mt-1.5 mb-7">
+                Escribe el correo con el que te registraste y te enviaremos un enlace para crear una
+                nueva contraseña.
               </p>
 
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1.5">
-                  Correo Electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+              <form onSubmit={handleRecuperar} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
+                    Correo electrónico
+                  </label>
                   <input
                     type="email"
                     name="email"
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="tecnico@infofix.local"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    placeholder="tecnico@tallerelfix.mx"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] placeholder-slate-400 focus:outline-none focus:border-[#24529F]"
                   />
                 </div>
+
+                {error && (
+                  <div className="p-3 rounded-xl bg-[#FDECEC] border border-[#F8B4B4] flex items-center gap-2 text-[#C53030] text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#0D1B3E] hover:bg-[#12284A] text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-sm disabled:opacity-60 cursor-pointer"
+                >
+                  {loading ? 'Enviando enlace...' : 'Enviar enlace'}
+                </button>
+
+                <div className="p-3.5 rounded-xl bg-[#F4F7FB] border border-slate-200/80 text-xs text-[#5A6578]">
+                  <p className="font-semibold text-[#1E2430]">El enlace caduca en 30 minutos</p>
+                  <p className="mt-0.5">
+                    Solo funciona una vez. Si no te llega, revisa tu carpeta de spam.
+                  </p>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* ==================== P3 VARIANTE: CORREO ENVIADO ==================== */}
+          {modo === 'correo_enviado' && (
+            <div className="text-center py-6">
+              <div className="w-14 h-14 rounded-full bg-[#E3F4EC] text-[#1F8A4C] flex items-center justify-center mx-auto mb-5">
+                <Mail className="w-6 h-6" />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 rounded-xl transition-all active:scale-[0.98] text-sm"
-              >
-                {loading ? 'Enviando solicitud...' : 'Enviar Enlace de Recuperación'}
-              </button>
-            </form>
-          )}
-        </div>
+              <h2 className="text-2xl font-bold text-[#0B0D12]">Revisa tu correo</h2>
+              <p className="text-sm text-[#5A6578] mt-2 mb-6 leading-relaxed">
+                Enviamos un enlace de recuperación a{' '}
+                <span className="font-semibold text-[#0B0D12]">{formData.email}</span>. Ábrelo para
+                crear una nueva contraseña.
+              </p>
 
-        {/* Pie con nota de privacidad */}
-        <div className="p-4 bg-slate-950/60 border-t border-slate-800/80 text-center">
-          <span className="text-[10px] text-slate-500 font-mono">
-            InfoFIX Security Protocol • LFPDPPP & NOM-174-SCFI-2007
-          </span>
+              <button
+                type="button"
+                onClick={() => cambiarModo('login')}
+                className="text-xs font-semibold text-[#0D1B3E] hover:underline cursor-pointer"
+              >
+                ← Volver a iniciar sesión
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
