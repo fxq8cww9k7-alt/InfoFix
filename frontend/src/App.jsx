@@ -6,6 +6,7 @@ import NuevaOrdenPage from './pages/NuevaOrdenPage';
 import DetalleOrdenPage from './pages/DetalleOrdenPage';
 import PublicStatusPage from './pages/PublicStatusPage';
 import PublicVerifyPage from './pages/PublicVerifyPage';
+import ImprimiblePage from './pages/ImprimiblePage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -65,6 +66,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DetalleOrdenPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/certificados/:token"
+            element={
+              <ProtectedRoute>
+                <ImprimiblePage />
               </ProtectedRoute>
             }
           />
