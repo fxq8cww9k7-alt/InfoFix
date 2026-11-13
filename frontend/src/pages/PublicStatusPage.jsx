@@ -1,13 +1,17 @@
+/**
+ * @file PublicStatusPage.jsx
+ * @description Página pública de seguimiento de estatus en tiempo real para el cliente mediante el QR proporcionado en el imprimible (RF-13).
+ * @author Yahúm Adair Hernández Martínez
+ */
+
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { publicApi } from '../api/client';
 import {
   Smartphone,
   CheckCircle2,
-  Clock,
   Wrench,
   AlertCircle,
-  FileCheck2,
   MapPin,
   Phone,
   Image as ImageIcon,
@@ -29,6 +33,15 @@ export default function PublicStatusPage() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [token]);
+
+  // Función auxiliar para asegurar el enmascaramiento de la serie o imei
+  const formatearIdentificadorPublico = (valor) => {
+    if (!valor) return 'N/A';
+    if (valor.includes('*')) return valor;
+    const str = String(valor);
+    if (str.length <= 4) return str;
+    return '*'.repeat(str.length - 4) + str.slice(-4);
+  };
 
   if (loading) {
     return (
@@ -63,7 +76,18 @@ export default function PublicStatusPage() {
     );
   }
 
-  const { folio, estado, paso, total_pasos, dispositivo, progreso, fotos_recepcion, avisos, taller, url_certificado } = data;
+  const {
+    folio,
+    estado,
+    paso,
+    total_pasos,
+    dispositivo,
+    progreso,
+    fotos_recepcion,
+    avisos,
+    taller,
+    url_certificado,
+  } = data;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-16">
@@ -96,11 +120,14 @@ export default function PublicStatusPage() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-white">
-                  {dispositivo.marca} {dispositivo.modelo}
+                  {dispositivo?.marca} {dispositivo?.modelo}
                 </h1>
-                <p className="text-xs text-slate-400 capitalize">
-                  {dispositivo.tipo} • IMEI: <span className="font-mono text-slate-300">{dispositivo.imei_o_serie}</span>
-                </p>
+                <div className="text-xs text-slate-400 mt-1 space-y-0.5">
+                  <span className="block capitalize">Tipo: {dispositivo?.tipo}</span>
+                  <span className="block font-mono text-slate-300">
+                    IMEI/SN: {formatearIdentificadorPublico(dispositivo?.imei_o_serie)}
+                  </span>
+                </div>
               </div>
             </div>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
@@ -132,7 +159,7 @@ export default function PublicStatusPage() {
             Línea de Tiempo del Servicio
           </h2>
           <div className="space-y-6 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-800">
-            {progreso.map((item, idx) => {
+            {progreso?.map((item, idx) => {
               const esActivo = item.estado === estado;
               return (
                 <div key={item.estado} className="relative flex items-start gap-4">
@@ -179,7 +206,7 @@ export default function PublicStatusPage() {
           </div>
         </div>
 
-        {/* Certificado si ya está entregado */}
+        {/* Enlace al Certificado si ya está entregado */}
         {url_certificado && (
           <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
