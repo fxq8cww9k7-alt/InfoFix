@@ -52,7 +52,7 @@ export default function AuthPage() {
     email: '',
     password: '',
     confirmar_password: '',
-    codigo_taller: 'TALLER-EL-FIX', // Valor por defecto en caso de que el backend lo requiera
+    codigo_taller: '',
   });
 
   const [error, setError] = useState(null);
@@ -81,6 +81,10 @@ export default function AuthPage() {
    */
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (!formData.email.trim() || !formData.password) {
+      setError('Por favor ingresa tu correo y contraseña.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -100,6 +104,10 @@ export default function AuthPage() {
    */
   const handleRegistro = async (e) => {
     e.preventDefault();
+    if (!formData.codigo_taller.trim()) {
+      setError('Por favor ingresa el código del taller.');
+      return;
+    }
     if (formData.password !== formData.confirmar_password) {
       setError('Las contraseñas no coinciden');
       return;
@@ -209,7 +217,7 @@ export default function AuthPage() {
                 Acceso exclusivo para el personal del taller.
               </p>
 
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form noValidate onSubmit={handleLogin} className="space-y-5">
                 <div>
                   <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
                     Correo electrónico
@@ -306,7 +314,7 @@ export default function AuthPage() {
                 Registra al personal del taller para que pueda entrar al panel.
               </p>
 
-              <form onSubmit={handleRegistro} className="space-y-4">
+              <form noValidate onSubmit={handleRegistro} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
                     Nombre completo <span className="text-[#C53030]">*</span>
@@ -337,6 +345,24 @@ export default function AuthPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
+                    Código del taller <span className="text-[#C53030]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="codigo_taller"
+                    required
+                    value={formData.codigo_taller}
+                    onChange={handleChange}
+                    placeholder="PROPORCIONADO POR ENCARGADO"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] placeholder-slate-400 focus:outline-none focus:border-[#24529F]"
+                  />
+                  <p className="text-[11px] text-[#5A6578] mt-1">
+                    Solicita este código al encargado para vincularte a este taller.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
@@ -364,11 +390,10 @@ export default function AuthPage() {
                       value={formData.confirmar_password}
                       onChange={handleChange}
                       placeholder="••••••••••"
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] focus:outline-none ${
-                        passwordsNoCoinciden
-                          ? 'border-[#C53030] bg-[#FDECEC]/30'
-                          : 'border-slate-300 focus:border-[#24529F]'
-                      }`}
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm text-[#0B0D12] focus:outline-none ${passwordsNoCoinciden
+                        ? 'border-[#C53030] bg-[#FDECEC]/30'
+                        : 'border-slate-300 focus:border-[#24529F]'
+                        }`}
                     />
                   </div>
                 </div>
@@ -387,9 +412,8 @@ export default function AuthPage() {
                     {[1, 2, 3, 4].map((barra) => (
                       <div
                         key={barra}
-                        className={`h-1 rounded-full transition-colors ${
-                          seguridad.nivel >= barra ? 'bg-[#1F8A4C]' : 'bg-slate-200'
-                        }`}
+                        className={`h-1 rounded-full transition-colors ${seguridad.nivel >= barra ? 'bg-[#1F8A4C]' : 'bg-slate-200'
+                          }`}
                       />
                     ))}
                   </div>
@@ -445,7 +469,7 @@ export default function AuthPage() {
                 <div>
                   <p className="text-xs font-bold text-[#0B0D12]">Cuenta creada</p>
                   <p className="text-xs text-[#5A6578]">
-                    {usuarioCreado?.nombre || formData.nombre} · Técnico
+                    {usuarioCreado?.nombre || formData.nombre}
                   </p>
                 </div>
               </div>
@@ -480,7 +504,7 @@ export default function AuthPage() {
                 nueva contraseña.
               </p>
 
-              <form onSubmit={handleRecuperar} className="space-y-5">
+              <form noValidate onSubmit={handleRecuperar} className="space-y-5">
                 <div>
                   <label className="block text-xs font-semibold text-[#1E2430] mb-1.5">
                     Correo electrónico
@@ -530,10 +554,13 @@ export default function AuthPage() {
 
               <h2 className="text-2xl font-bold text-[#0B0D12]">Revisa tu correo</h2>
               <p className="text-sm text-[#5A6578] mt-2 mb-6 leading-relaxed">
-                Enviamos un enlace de recuperación a{' '}
-                <span className="font-semibold text-[#0B0D12]">{formData.email}</span>. Ábrelo para
-                crear una nueva contraseña.
+                Si <span className="font-semibold text-[#0B0D12]">{formData.email}</span> corresponde a una cuenta activa del taller, te hemos enviado un enlace de recuperación.
               </p>
+
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 text-left mb-6">
+                <p className="font-semibold">¿No recibiste nada?</p>
+                <p className="mt-0.5">Revisa tu carpeta de spam o confirma con el encargado del taller que tu cuenta esté registrada.</p>
+              </div>
 
               <button
                 type="button"
