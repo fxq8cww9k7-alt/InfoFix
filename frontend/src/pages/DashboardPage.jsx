@@ -25,6 +25,8 @@ import {
   ExternalLink,
   ShieldAlert,
   Calendar,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -118,11 +120,10 @@ export default function DashboardPage() {
                 <Link
                   key={item.label}
                   to={item.path}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                    activo
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activo
                       ? 'bg-[#24529F] text-white shadow-sm'
                       : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="w-4 h-4" />
@@ -305,11 +306,10 @@ export default function DashboardPage() {
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
                 <button
                   onClick={() => setFiltroEstado('')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    filtroEstado === ''
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${filtroEstado === ''
                       ? 'bg-[#0D1B3E] text-white shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   Todas
                 </button>
@@ -317,11 +317,10 @@ export default function DashboardPage() {
                   <button
                     key={est}
                     onClick={() => setFiltroEstado(est)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-                      filtroEstado === est
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${filtroEstado === est
                         ? 'bg-[#0D1B3E] text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+                      }`}
                   >
                     {est}
                   </button>
