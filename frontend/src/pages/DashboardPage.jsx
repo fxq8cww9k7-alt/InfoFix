@@ -22,7 +22,6 @@ import {
   Calendar,
   ChevronRight,
   Search,
-  SlidersHorizontal,
   LogOut,
   Wrench,
   Tag,
@@ -34,6 +33,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const [ordenes, setOrdenes] = useState([]);
+  const [todasOrdenes, setTodasOrdenes] = useState([]);
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -52,6 +52,11 @@ export default function DashboardPage() {
       if (data.resumen) {
         setResumen(data.resumen);
       }
+
+      // Guardamos la lista general de órdenes para el widget de etapas
+      if (!filtroEstado && !busqueda.trim()) {
+        setTodasOrdenes(data.ordenes || []);
+      }
     } catch (err) {
       console.error('Error al cargar órdenes:', err);
     } finally {
@@ -62,6 +67,13 @@ export default function DashboardPage() {
   useEffect(() => {
     cargarDatos();
   }, [filtroEstado]);
+
+  // Al montar, si no tenemos aún el catálogo general, lo pedimos para el widget de etapas
+  useEffect(() => {
+    if (todasOrdenes.length === 0 && !filtroEstado && !busqueda.trim() && ordenes.length > 0) {
+      setTodasOrdenes(ordenes);
+    }
+  }, [ordenes]);
 
   const handleBusquedaSubmit = (e) => {
     e.preventDefault();
@@ -84,17 +96,38 @@ export default function DashboardPage() {
     return 'Buenas noches';
   };
 
-  const nombreUsuario = user?.nombre ? user.nombre.split(' ')[0] : 'Yahúm';
-  const tituloBienvenida = ordenes.length === 0 ? `Bienvenido, ${nombreUsuario}` : `${obtenerSaludo()}, ${nombreUsuario}`;
+  const nombreUsuario = user?.nombre
+    ? user.nombre.split(' ')[0]
+    : user?.email
+      ? user.email.split('@')[0]
+      : '';
+  const tituloBienvenida = ordenes.length === 0
+    ? `Bienvenido${nombreUsuario ? `, ${nombreUsuario}` : ''}`
+    : `${obtenerSaludo()}${nombreUsuario ? `, ${nombreUsuario}` : ''}`;
 
-  // Cálculo de etapas para el widget "Equipos por etapas"
-  const etapasCount = {
-    Recibido: ordenes.filter((o) => o.estado === 'Recibido').length,
-    Diagnóstico: ordenes.filter((o) => o.estado === 'Diagnóstico').length,
-    Reparación: ordenes.filter((o) => o.estado === 'Reparación').length,
-    Pruebas: ordenes.filter((o) => o.estado === 'Pruebas').length,
+  const obtenerIniciales = (nombreCompleto, correo) => {
+    if (nombreCompleto) {
+      const partes = nombreCompleto.trim().split(/\s+/);
+      if (partes.length >= 2) {
+        return (partes[0][0] + partes[1][0]).toUpperCase();
+      }
+      return partes[0].substring(0, 2).toUpperCase();
+    }
+    if (correo) {
+      return correo.substring(0, 2).toUpperCase();
+    }
+    return 'IF';
   };
-  const totalActivas = (resumen?.activas ?? ordenes.length) || 1;
+
+  // Cálculo de etapas para el widget "Equipos por etapas" (usando el catálogo global si está filtrado)
+  const listaParaEtapas = todasOrdenes.length > 0 ? todasOrdenes : ordenes;
+  const etapasCount = {
+    Recibido: listaParaEtapas.filter((o) => o.estado === 'Recibido').length,
+    Diagnóstico: listaParaEtapas.filter((o) => o.estado === 'Diagnóstico').length,
+    Reparación: listaParaEtapas.filter((o) => o.estado === 'Reparación').length,
+    Pruebas: listaParaEtapas.filter((o) => o.estado === 'Pruebas').length,
+  };
+  const totalActivas = (resumen?.activas ?? listaParaEtapas.length) || 1;
 
   // Menú agrupado según el diseño oficial de Figma
   const menuTaller = [
@@ -187,21 +220,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Perfil del técnico en el pie del Sidebar */}
+        {/* Perfil del usuario en el pie del Sidebar */}
         <div className="p-4 border-t border-white/10 bg-black/20 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-9 h-9 rounded-full bg-[#24529F] text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
-              {user?.nombre
-                ? user.nombre.substring(0, 2).toUpperCase()
-                : user?.email
-                  ? user.email.substring(0, 2).toUpperCase()
-                  : 'IF'}
+              {obtenerIniciales(user?.nombre, user?.email)}
             </div>
             <div className="truncate">
-              <p className="text-xs font-semibold text-white truncate">
-                {user?.nombre || user?.email || 'Técnico'}
+              <p className="text-xs font-semibold text-white truncate" title={user?.nombre || user?.email}>
+                {user?.nombre || user?.email || '—'}
               </p>
-              <p className="text-[10px] text-slate-400 truncate">Técnico</p>
+              <p className="text-[10px] text-slate-400 truncate" title={user?.email}>
+                {user?.email || 'Personal del taller'}
+              </p>
             </div>
           </div>
           <button
@@ -225,7 +256,7 @@ export default function DashboardPage() {
             Resumen de órdenes
           </div>
 
-          {/* Buscador superior y opciones */}
+          {/* Buscador superior */}
           <div className="flex items-center gap-2">
             <form onSubmit={handleBusquedaSubmit} className="relative w-64 sm:w-80">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
@@ -237,13 +268,6 @@ export default function DashboardPage() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
               />
             </form>
-            <button
-              type="button"
-              className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
-              title="Filtros avanzados"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </button>
           </div>
         </header>
 
@@ -377,34 +401,32 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <h2 className="font-bold text-sm text-[#0B0D12] shrink-0">Órdenes activas</h2>
 
-                {/* Filtros de estado en pestañas tipo píldora (visibles cuando hay órdenes) */}
-                {ordenes.length > 0 && (
-                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                {/* Filtros de estado en pestañas tipo píldora (siempre accesibles) */}
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                  <button
+                    onClick={() => setFiltroEstado('')}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                      filtroEstado === ''
+                        ? 'bg-[#0D1B3E] text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Todas
+                  </button>
+                  {ESTADOS.slice(0, 4).map((est) => (
                     <button
-                      onClick={() => setFiltroEstado('')}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                        filtroEstado === ''
+                      key={est}
+                      onClick={() => setFiltroEstado(est)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                        filtroEstado === est
                           ? 'bg-[#0D1B3E] text-white shadow-sm'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
-                      Todas
+                      {est}
                     </button>
-                    {ESTADOS.slice(0, 4).map((est) => (
-                      <button
-                        key={est}
-                        onClick={() => setFiltroEstado(est)}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                          filtroEstado === est
-                            ? 'bg-[#0D1B3E] text-white shadow-sm'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {est}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
 
               {/* Contenido de la Tabla / Estado vacío */}
@@ -413,25 +435,46 @@ export default function DashboardPage() {
                   Cargando registros...
                 </div>
               ) : ordenes.length === 0 ? (
-                /* Estado vacío oficial Figma (Image 2) */
-                <div className="p-12 text-center flex flex-col items-center justify-center">
-                  <div className="w-14 h-14 rounded-full bg-blue-50 text-[#24529F] flex items-center justify-center mb-3 border border-blue-100 shadow-sm">
-                    <FileText className="w-6 h-6" />
+                filtroEstado ? (
+                  /* Estado vacío cuando se filtra por una etapa sin órdenes */
+                  <div className="p-12 text-center flex flex-col items-center justify-center">
+                    <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-bold text-base text-[#0B0D12]">
+                      No hay órdenes en la etapa &ldquo;{filtroEstado}&rdquo;
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 mb-5 max-w-sm">
+                      Actualmente no hay equipos en este estado de reparación.
+                    </p>
+                    <button
+                      onClick={() => setFiltroEstado('')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition-all"
+                    >
+                      Ver todas las órdenes
+                    </button>
                   </div>
-                  <h3 className="font-bold text-base text-[#0B0D12]">
-                    No hay órdenes de reparación activas registradas
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1 mb-5 max-w-sm">
-                    Cuando recibas un equipo, crea su orden y aparecerá aquí con su estado.
-                  </p>
-                  <Link
-                    to="/ordenes/nueva"
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#0D1B3E] hover:bg-[#12284A] text-white text-xs font-semibold transition-all shadow-sm active:scale-[0.98]"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Crear primera orden</span>
-                  </Link>
-                </div>
+                ) : (
+                  /* Estado vacío oficial Figma (Image 2) */
+                  <div className="p-12 text-center flex flex-col items-center justify-center">
+                    <div className="w-14 h-14 rounded-full bg-blue-50 text-[#24529F] flex items-center justify-center mb-3 border border-blue-100 shadow-sm">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-bold text-base text-[#0B0D12]">
+                      No hay órdenes de reparación activas registradas
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 mb-5 max-w-sm">
+                      Cuando recibas un equipo, crea su orden y aparecerá aquí con su estado.
+                    </p>
+                    <Link
+                      to="/ordenes/nueva"
+                      className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#0D1B3E] hover:bg-[#12284A] text-white text-xs font-semibold transition-all shadow-sm active:scale-[0.98]"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Crear primera orden</span>
+                    </Link>
+                  </div>
+                )
               ) : (
                 /* Listado oficial con dos líneas por celda (Image 1) */
                 <div className="overflow-x-auto">
@@ -523,7 +566,7 @@ export default function DashboardPage() {
             <div className="w-full lg:w-72 shrink-0 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
               <h2 className="font-bold text-sm text-[#0B0D12]">Equipos por etapas</h2>
 
-              {ordenes.length > 0 && (
+              {(listaParaEtapas.length > 0 || ordenes.length > 0) && (
                 <div className="space-y-4 pt-1">
                   {/* Etapa 1: Recibido */}
                   <div>
