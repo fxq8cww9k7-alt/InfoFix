@@ -518,10 +518,12 @@ function listar({ q, estado, desde, hasta, tecnico, pagina = 1, porPagina = 20 }
     .prepare(
       `SELECT COUNT(*) AS total,
               COALESCE(SUM(estado <> 'Entregado'), 0) AS activas,
-              COALESCE(SUM(estado = 'Entregado'), 0) AS entregadas
+              COALESCE(SUM(estado = 'Pruebas'), 0) AS pruebas,
+              COALESCE(SUM(estado = 'Entregado'), 0) AS entregadas,
+              COALESCE(SUM(estado = 'Entregado' AND garantia_fin >= :ahora), 0) AS garantias
          FROM ordenes`,
     )
-    .get();
+    .get({ ahora: params.ahora });
 
   return {
     ordenes,

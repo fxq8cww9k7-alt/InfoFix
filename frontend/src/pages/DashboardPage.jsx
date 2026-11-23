@@ -77,10 +77,24 @@ export default function DashboardPage() {
 
   const ESTADOS = ['Recibido', 'Diagnóstico', 'Reparación', 'Pruebas', 'Entregado'];
 
+  const obtenerFechaFormateada = () => {
+    const hoy = new Date();
+    const opciones = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    const fechaStr = hoy.toLocaleDateString('es-MX', opciones);
+    return fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
+  };
+
+  const obtenerSaludo = () => {
+    const hora = new Date().getHours();
+    if (hora < 12) return 'Buenos días';
+    if (hora < 19) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
+
   // Enlaces del menú lateral (Sidebar) oficial del taller
   const menuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { label: 'Órdenes', icon: ClipboardList, path: '/dashboard', badge: resumen?.activas || 12 },
+    { label: 'Órdenes', icon: ClipboardList, path: '/dashboard', badge: (resumen?.activas > 0) ? resumen.activas : null },
     { label: 'Nueva orden', icon: Plus, path: '/ordenes/nueva' },
     { label: 'Clientes', icon: Users, path: '/dashboard' },
     { label: 'Dispositivos', icon: HardDrive, path: '/dashboard' },
@@ -98,13 +112,7 @@ export default function DashboardPage() {
               <Wrench className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-white text-lg tracking-tight">InfoFIX</span>
-                <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/10 text-cyan-300 font-bold">
-                  TALLER
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400">Panel Interno</p>
+              <span className="font-bold text-white text-lg tracking-tight">InfoFIX</span>
             </div>
           </div>
 
@@ -140,15 +148,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Perfil del técnico en la esquina inferior del Sidebar */}
+        {/* Perfil del usuario en la esquina inferior del Sidebar */}
         <div className="p-4 border-t border-white/10 bg-black/20 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-9 h-9 rounded-full bg-[#24529F] text-white font-bold flex items-center justify-center text-xs shrink-0">
-              {user?.nombre ? user.nombre.substring(0, 2).toUpperCase() : 'YH'}
+              {user?.nombre
+                ? user.nombre.substring(0, 2).toUpperCase()
+                : (user?.email ? user.email.substring(0, 2).toUpperCase() : 'IF')}
             </div>
             <div className="truncate">
-              <p className="text-xs font-semibold text-white truncate">{user?.nombre || 'Yahúm Hernández'}</p>
-              <p className="text-[10px] text-slate-400 truncate">Técnico encargado</p>
+              <p className="text-xs font-semibold text-white truncate">{user?.nombre || 'Usuario'}</p>
+              <p className="text-[10px] text-slate-400 truncate" title={user?.email}>{user?.email || 'contacto@infofix.test'}</p>
             </div>
           </div>
           <button
@@ -241,11 +251,11 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h1 className="text-2xl font-bold text-[#0B0D12] tracking-tight">
-                Buenas tardes, {user?.nombre?.split(' ')[0] || 'Yahúm'}
+                {obtenerSaludo()}{user?.nombre ? `, ${user.nombre.split(' ')[0]}` : (user?.email ? `, ${user.email.split('@')[0]}` : '')}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" />
-                Sábado 17 de octubre de 2026 · Taller El Fix, Guadalajara
+                {obtenerFechaFormateada()} · Guadalajara, Jalisco
               </p>
             </div>
           </div>
@@ -258,7 +268,7 @@ export default function DashboardPage() {
                 <Smartphone className="w-4 h-4 text-[#24529F]" />
               </div>
               <div className="text-3xl font-bold text-[#0B0D12]">
-                {resumen?.activas ?? ordenes.length}
+                {resumen?.activas ?? 0}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">En curso en el taller</p>
             </div>
@@ -269,7 +279,7 @@ export default function DashboardPage() {
                 <Clock className="w-4 h-4 text-amber-500" />
               </div>
               <div className="text-3xl font-bold text-[#0B0D12]">
-                {resumen?.pruebas ?? 3}
+                {resumen?.pruebas ?? 0}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">Listas para verificación</p>
             </div>
@@ -280,7 +290,7 @@ export default function DashboardPage() {
                 <CheckCircle2 className="w-4 h-4 text-[#1F8A4C]" />
               </div>
               <div className="text-3xl font-bold text-[#0B0D12]">
-                {resumen?.entregadas ?? 48}
+                {resumen?.entregadas ?? 0}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">Histórico entregado</p>
             </div>
@@ -291,7 +301,7 @@ export default function DashboardPage() {
                 <ShieldAlert className="w-4 h-4 text-indigo-500" />
               </div>
               <div className="text-3xl font-bold text-[#0B0D12]">
-                {resumen?.garantias ?? 31}
+                {resumen?.garantias ?? 0}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">Protección activa</p>
             </div>
@@ -369,7 +379,7 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-slate-500 font-mono">
-                          {ord.fecha_recepcion || '17 oct 2026'}
+                          {ord.fecha_recepcion ? new Date(ord.fecha_recepcion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <Link
