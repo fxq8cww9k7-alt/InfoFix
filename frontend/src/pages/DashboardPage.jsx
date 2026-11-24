@@ -1,36 +1,58 @@
 /**
  * @file DashboardPage.jsx
- * @description Panel principal del taller (Dashboard P4) con métricas hero, widget de etapas,
- *              filtros y listado de órdenes activas conforme al diseño oficial de Figma.
+ * @description Panel principal del taller (Inicio / Dashboard P4) 
+ * @task T14 (RF-13, RF-14)
+ * @author Yahúm Adair Hernández Martínez
  */
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest } from '../api/client';
+import TallerSidebar from '../components/TallerSidebar';
 import {
-  Home,
-  ClipboardList,
   Plus,
-  Users,
-  Smartphone,
-  FileCheck,
   FileText,
   Clock,
   Check,
   ShieldCheck,
-  Calendar,
-  ChevronRight,
   Search,
-  LogOut,
-  Wrench,
   Tag,
 } from 'lucide-react';
 
+const ESTADOS = ['Recibido', 'Diagnóstico', 'Reparación', 'Pruebas', 'Entregado'];
+
+/**
+ * Devuelve la fecha actual formateada en español para el encabezado del panel.
+ *
+ * @returns {string} Fecha legible (ej. "Martes 24 de noviembre de 2026").
+ */
+function obtenerFechaFormateada() {
+  const hoy = new Date();
+  const opciones = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  const fechaStr = hoy.toLocaleDateString('es-MX', opciones).replace(',', '');
+  return fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
+}
+
+/**
+ * Devuelve el saludo correspondiente según la hora local del equipo.
+ *
+ * @returns {string} "Buenos días", "Buenas tardes" o "Buenas noches".
+ */
+function obtenerSaludo() {
+  const hora = new Date().getHours();
+  if (hora < 12) return 'Buenos días';
+  if (hora < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+/**
+ * Vista principal del panel interno del taller (RF-13 y RF-14).
+ *
+ * @returns {JSX.Element} Dashboard con métricas, tabla de órdenes activas y progreso por etapas.
+ */
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [ordenes, setOrdenes] = useState([]);
   const [todasOrdenes, setTodasOrdenes] = useState([]);
@@ -39,7 +61,11 @@ export default function DashboardPage() {
   const [filtroEstado, setFiltroEstado] = useState('');
   const [busqueda, setBusqueda] = useState('');
 
-  // Carga inicial y reactiva de órdenes
+  /**
+   * Consulta el listado de órdenes y sus contadores operativos aplicando los filtros activos.
+   *
+   * @returns {Promise<void>}
+   */
   const cargarDatos = async () => {
     try {
       setLoading(true);
@@ -53,7 +79,7 @@ export default function DashboardPage() {
         setResumen(data.resumen);
       }
 
-      // Guardamos la lista general de órdenes para el widget de etapas
+      // Conserva el catálogo sin filtros para que el widget de etapas mantenga los totales globales
       if (!filtroEstado && !busqueda.trim()) {
         setTodasOrdenes(data.ordenes || []);
       }
@@ -68,32 +94,21 @@ export default function DashboardPage() {
     cargarDatos();
   }, [filtroEstado]);
 
-  // Al montar, si no tenemos aún el catálogo general, lo pedimos para el widget de etapas
   useEffect(() => {
     if (todasOrdenes.length === 0 && !filtroEstado && !busqueda.trim() && ordenes.length > 0) {
       setTodasOrdenes(ordenes);
     }
   }, [ordenes]);
 
+  /**
+   * Ejecuta la búsqueda por folio, cliente, teléfono o IMEI/serie al enviar el formulario.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} e Evento de envío del formulario.
+   * @returns {void}
+   */
   const handleBusquedaSubmit = (e) => {
     e.preventDefault();
     cargarDatos();
-  };
-
-  const ESTADOS = ['Recibido', 'Diagnóstico', 'Reparación', 'Pruebas', 'Entregado'];
-
-  const obtenerFechaFormateada = () => {
-    const hoy = new Date();
-    const opciones = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-    const fechaStr = hoy.toLocaleDateString('es-MX', opciones).replace(',', '');
-    return fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
-  };
-
-  const obtenerSaludo = () => {
-    const hora = new Date().getHours();
-    if (hora < 12) return 'Buenos días';
-    if (hora < 19) return 'Buenas tardes';
-    return 'Buenas noches';
   };
 
   const nombreUsuario = user?.nombre
@@ -101,25 +116,13 @@ export default function DashboardPage() {
     : user?.email
       ? user.email.split('@')[0]
       : '';
-  const tituloBienvenida = ordenes.length === 0
-    ? `Bienvenido${nombreUsuario ? `, ${nombreUsuario}` : ''}`
-    : `${obtenerSaludo()}${nombreUsuario ? `, ${nombreUsuario}` : ''}`;
 
-  const obtenerIniciales = (nombreCompleto, correo) => {
-    if (nombreCompleto) {
-      const partes = nombreCompleto.trim().split(/\s+/);
-      if (partes.length >= 2) {
-        return (partes[0][0] + partes[1][0]).toUpperCase();
-      }
-      return partes[0].substring(0, 2).toUpperCase();
-    }
-    if (correo) {
-      return correo.substring(0, 2).toUpperCase();
-    }
-    return 'IF';
-  };
+  const tituloBienvenida =
+    ordenes.length === 0
+      ? `Bienvenido${nombreUsuario ? `, ${nombreUsuario}` : ''}`
+      : `${obtenerSaludo()}${nombreUsuario ? `, ${nombreUsuario}` : ''}`;
 
-  // Cálculo de etapas para el widget "Equipos por etapas" (usando el catálogo global si está filtrado)
+  // Conteo por etapa para el widget lateral usando el catálogo global si hay un filtro activo
   const listaParaEtapas = todasOrdenes.length > 0 ? todasOrdenes : ordenes;
   const etapasCount = {
     Recibido: listaParaEtapas.filter((o) => o.estado === 'Recibido').length,
@@ -129,124 +132,10 @@ export default function DashboardPage() {
   };
   const totalActivas = (resumen?.activas ?? listaParaEtapas.length) || 1;
 
-  // Menú agrupado según el diseño oficial de Figma
-  const menuTaller = [
-    { label: 'Dashboard', icon: Home, path: '/dashboard' },
-    {
-      label: 'Órdenes',
-      icon: ClipboardList,
-      path: '/dashboard',
-      badge: resumen?.activas > 0 ? resumen.activas : null,
-    },
-    { label: 'Nueva orden', icon: Plus, path: '/ordenes/nueva' },
-  ];
-
-  const menuRegistros = [
-    { label: 'Clientes', icon: Users, path: '/dashboard' },
-    { label: 'Dispositivos', icon: Smartphone, path: '/dashboard' },
-    { label: 'Certificados', icon: FileCheck, path: '/dashboard' },
-  ];
-
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0B0D12] flex flex-col lg:flex-row font-sans">
-      {/* ================= SIDEBAR LATERAL IZQUIERDO ================= */}
-      <aside className="w-full lg:w-64 bg-[#0D1B3E] text-slate-300 flex flex-col justify-between shrink-0 border-r border-slate-800">
-        <div>
-          {/* Logo / Cabecera InfoFIX */}
-          <div className="p-6 flex items-center gap-3 border-b border-white/10">
-            <div className="w-9 h-9 rounded-xl bg-[#24529F] flex items-center justify-center text-white shadow-sm">
-              <Wrench className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-bold text-white text-lg tracking-tight">InfoFIX</span>
-            </div>
-          </div>
-
-          {/* Menú de navegación organizado en TALLER y REGISTROS */}
-          <div className="p-4 space-y-6">
-            {/* Grupo 1: TALLER */}
-            <div className="space-y-1">
-              <p className="px-3 text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2 font-bold">
-                TALLER
-              </p>
-              {menuTaller.map((item, index) => {
-                const Icon = item.icon;
-                const activo = location.pathname === item.path && index === 0;
-                return (
-                  <Link
-                    key={item.label}
-                    to={item.path}
-                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                      activo
-                        ? 'bg-[#24529F] text-white shadow-sm font-semibold'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <span className="px-1.5 py-0.5 rounded-md bg-white/15 text-white text-[10px] font-mono font-bold">
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Grupo 2: REGISTROS */}
-            <div className="space-y-1">
-              <p className="px-3 text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2 font-bold">
-                REGISTROS
-              </p>
-              {menuRegistros.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.label}
-                    to={item.path}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Perfil del usuario en el pie del Sidebar */}
-        <div className="p-4 border-t border-white/10 bg-black/20 flex items-center justify-between">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-full bg-[#24529F] text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
-              {obtenerIniciales(user?.nombre, user?.email)}
-            </div>
-            <div className="truncate">
-              <p className="text-xs font-semibold text-white truncate" title={user?.nombre || user?.email}>
-                {user?.nombre || user?.email || '—'}
-              </p>
-              <p className="text-[10px] text-slate-400 truncate" title={user?.email}>
-                {user?.email || 'Personal del taller'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
-            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
-            title="Cerrar sesión"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </aside>
+      {/* Sidebar compartido */}
+      <TallerSidebar ordenesActivas={resumen?.activas} />
 
       {/* ================= CONTENIDO PRINCIPAL ================= */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -256,7 +145,7 @@ export default function DashboardPage() {
             Resumen de órdenes
           </div>
 
-          {/* Buscador superior */}
+          {/* Buscador superior (RF-14) */}
           <div className="flex items-center gap-2">
             <form onSubmit={handleBusquedaSubmit} className="relative w-64 sm:w-80">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
@@ -287,7 +176,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2.5 self-start sm:self-auto">
               {ordenes.length > 0 && (
                 <Link
-                  to="/dashboard"
+                  to="/clientes"
                   className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition-all"
                 >
                   Clientes
@@ -303,7 +192,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ================= TARJETAS DE MÉTRICAS (FIGMA P4) ================= */}
+          {/* ================= TARJETAS DE MÉTRICAS (RF-13) ================= */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* TARJETA HERO OSCURA: Reparaciones activas */}
             <div className="bg-[#0D1B3E] border border-[#0D1B3E] rounded-2xl p-5 shadow-sm text-white flex flex-col justify-between min-h-[135px]">
@@ -396,16 +285,16 @@ export default function DashboardPage() {
 
           {/* ================= LAYOUT EN 2 COLUMNAS: ÓRDENES + ETAPAS ================= */}
           <div className="flex flex-col lg:flex-row gap-6 items-start">
-            {/* COLUMNA IZQUIERDA: Tabla de Órdenes Activas (Flexible) */}
+            {/* COLUMNA IZQUIERDA: Tabla de Órdenes Activas */}
             <div className="flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <h2 className="font-bold text-sm text-[#0B0D12] shrink-0">Órdenes activas</h2>
 
-                {/* Filtros de estado en pestañas tipo píldora (siempre accesibles) */}
                 <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                   <button
+                    type="button"
                     onClick={() => setFiltroEstado('')}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                       filtroEstado === ''
                         ? 'bg-[#0D1B3E] text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -415,9 +304,10 @@ export default function DashboardPage() {
                   </button>
                   {ESTADOS.slice(0, 4).map((est) => (
                     <button
+                      type="button"
                       key={est}
                       onClick={() => setFiltroEstado(est)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                         filtroEstado === est
                           ? 'bg-[#0D1B3E] text-white shadow-sm'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -429,14 +319,12 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Contenido de la Tabla / Estado vacío */}
               {loading ? (
                 <div className="p-12 text-center text-xs text-slate-400 font-mono">
                   Cargando registros...
                 </div>
               ) : ordenes.length === 0 ? (
                 filtroEstado ? (
-                  /* Estado vacío cuando se filtra por una etapa sin órdenes */
                   <div className="p-12 text-center flex flex-col items-center justify-center">
                     <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
                       <FileText className="w-6 h-6" />
@@ -448,14 +336,14 @@ export default function DashboardPage() {
                       Actualmente no hay equipos en este estado de reparación.
                     </p>
                     <button
+                      type="button"
                       onClick={() => setFiltroEstado('')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition-all"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition-all cursor-pointer"
                     >
                       Ver todas las órdenes
                     </button>
                   </div>
                 ) : (
-                  /* Estado vacío oficial Figma (Image 2) */
                   <div className="p-12 text-center flex flex-col items-center justify-center">
                     <div className="w-14 h-14 rounded-full bg-blue-50 text-[#24529F] flex items-center justify-center mb-3 border border-blue-100 shadow-sm">
                       <FileText className="w-6 h-6" />
@@ -476,7 +364,6 @@ export default function DashboardPage() {
                   </div>
                 )
               ) : (
-                /* Listado oficial con dos líneas por celda (Image 1) */
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
@@ -562,7 +449,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* COLUMNA DERECHA: Widget "Equipos por etapas" (Compacto) */}
+            {/* COLUMNA DERECHA: Widget "Equipos por etapas" */}
             <div className="w-full lg:w-72 shrink-0 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
               <h2 className="font-bold text-sm text-[#0B0D12]">Equipos por etapas</h2>
 
