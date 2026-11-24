@@ -39,44 +39,44 @@ export default function DetalleOrdenPage() {
   }, [id]);
 
   const cargarDetalleOrden = async () => {
-    try {
-      setLoading(true);
-      const data = await apiRequest(`/api/ordenes/${id}`);
-      setOrden(data);
-    } catch (err) {
-      setError(err.message || 'No se pudo cargar la información de la orden.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const data = await apiRequest(`/api/ordenes/${id}`);
+    setOrden(data.orden || data);
+  } catch (err) {
+    setError(err.message || 'No se pudo cargar la información de la orden.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCambiarEstado = async (nuevoEstado) => {
-    try {
-      setError(null);
-      await apiRequest(`/api/ordenes/${id}/estado`, {
-        method: 'PATCH',
-        body: JSON.stringify({ estado: nuevoEstado, nota: `Cambio de estado a ${nuevoEstado}` }),
-      });
-      cargarDetalleOrden();
-    } catch (err) {
-      setError(err.message || 'Error al cambiar el estado de la orden.');
-    }
-  };
+  try {
+    setError(null);
+    await apiRequest(`/api/ordenes/${id}/estado`, {
+      method: 'PATCH',
+      body: { estado: nuevoEstado, nota: `Cambio de estado a ${nuevoEstado}` },
+    });
+    cargarDetalleOrden();
+  } catch (err) {
+    setError(err.message || 'Error al cambiar el estado de la orden.');
+  }
+};
 
   const handleAgregarPieza = async (e) => {
-    e.preventDefault();
-    try {
-      setError(null);
-      await apiRequest(`/api/ordenes/${id}/refacciones`, {
-        method: 'POST',
-        body: JSON.stringify(nuevaPieza),
-      });
-      setNuevaPieza({ nombre: '', tipo: 'original', numero_serie: '' });
-      cargarDetalleOrden();
-    } catch (err) {
-      setError(err.message || 'Error al registrar la refacción.');
-    }
-  };
+  e.preventDefault();
+  try {
+    setError(null);
+    await apiRequest(`/api/ordenes/${id}/refacciones`, {
+      method: 'POST',
+      body: nuevaPieza,
+    });
+    setNuevaPieza({ nombre: '', tipo: 'original', numero_serie: '' });
+    cargarDetalleOrden();
+  } catch (err) {
+    setError(err.message || 'Error al registrar la refacción.');
+  }
+};
 
   if (loading) {
     return (
