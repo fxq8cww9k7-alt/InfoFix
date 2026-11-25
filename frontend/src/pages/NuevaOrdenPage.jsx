@@ -1,7 +1,8 @@
 /**
  * @file NuevaOrdenPage.jsx
  * @description Pantalla para el registro de nuevos clientes, dispositivos y creación de órdenes (P6).
- *              Diseño de dos columnas con panel lateral de Resumen reactivo y fidelidad visual al sistema de diseño.
+ * @task T11 (RF-02, RF-03, RF-04, RF-05, RF-07)
+ * @author Yahúm Adair Hernández Martínez
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -20,17 +21,41 @@ import {
   Smartphone,
   Tablet,
   Laptop,
+  Printer,
+  Monitor,
   HardDrive,
   ChevronDown,
 } from 'lucide-react';
 
+const TIPOS_DISPOSITIVO = [
+  { value: 'celular', apiTipo: 'celular', label: 'Celular', icon: Smartphone },
+  { value: 'tablet', apiTipo: 'tablet', label: 'Tablet', icon: Tablet },
+  { value: 'laptop', apiTipo: 'laptop', label: 'Laptop', icon: Laptop },
+  { value: 'pc_escritorio', apiTipo: 'otro', label: 'PC de escritorio', icon: Monitor },
+  { value: 'impresora', apiTipo: 'otro', label: 'Impresora', icon: Printer },
+  { value: 'otro', apiTipo: 'otro', label: 'Otro equipo', icon: HardDrive },
+];
+
+const PLACEHOLDERS_EQUIPO = {
+  celular: { marca: 'Ej. Samsung, Apple', modelo: 'Ej. Galaxy A54 5G' },
+  tablet: { marca: 'Ej. Apple, Samsung', modelo: 'Ej. iPad Air 5' },
+  laptop: { marca: 'Ej. HP, Dell, Apple', modelo: 'Ej. Pavilion 15' },
+  impresora: { marca: 'Ej. Epson, HP, Canon', modelo: 'Ej. EcoTank L3250' },
+  pc_escritorio: { marca: 'Ej. Dell, HP, Ensamblada', modelo: 'Ej. OptiPlex 7090' },
+  otro: { marca: 'Ej. Sony, Nintendo', modelo: 'Ej. Consola o equipo' },
+};
+
+/**
+ * Pantalla de recepción y alta de nueva orden de reparación (RF-02 a RF-05, RF-07).
+ *
+ * @returns {JSX.Element} Formulario de captura de cliente, dispositivo y estado inicial.
+ */
 export default function NuevaOrdenPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  // Estados del formulario
   const [formData, setFormData] = useState({
     // Cliente
     nombre_cliente: '',
@@ -59,13 +84,6 @@ export default function NuevaOrdenPage() {
   const [dropdownAbierto, setDropdownAbierto] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  const tiposDispositivo = [
-    { value: 'celular', label: 'Celular', icon: Smartphone },
-    { value: 'tablet', label: 'Tablet', icon: Tablet },
-    { value: 'laptop', label: 'Laptop', icon: Laptop },
-    { value: 'otro', label: 'Otro equipo', icon: HardDrive },
-  ];
 
   const accesoriosPredefinidos = [
     'Funda',
@@ -140,13 +158,19 @@ export default function NuevaOrdenPage() {
     setError(null);
   };
 
+  /**
+   * Actualiza el tipo de dispositivo seleccionado en el desplegable.
+   *
+   * @param {string} tipo Valor visual del tipo de equipo.
+   * @returns {void}
+   */
   const seleccionarTipoDispositivo = (tipo) => {
     setFormData((prev) => ({
       ...prev,
       tipo_dispositivo: tipo,
-      // Si cambia de celular a laptop/tablet, limpiar error si aplica
     }));
     setDropdownAbierto(false);
+    setError(null);
   };
 
   const toggleAccesorio = (acc) => {
@@ -179,7 +203,12 @@ export default function NuevaOrdenPage() {
     }
   };
 
-  // Subida de fotos con validación estricta de formato (JPG/PNG), tamaño (<= 5MB) y cantidad (1-5)
+  /**
+   * Valida formato (JPG/PNG), tamaño (<= 5 MB) y cantidad (máx. 5) de las fotos de recepción (RF-05, RF-07).
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} e Evento de selección de archivos.
+   * @returns {void}
+   */
   const handleFotoUpload = (e) => {
     setError(null);
     const files = Array.from(e.target.files || []);
@@ -203,7 +232,7 @@ export default function NuevaOrdenPage() {
 
     const disponibles = 5 - fotos.length;
     if (files.length > disponibles) {
-      setError(`Solo puedes adjuntar hasta 5 fotografías de recepción en total.`);
+      setError('Solo puedes adjuntar hasta 5 fotografías de recepción en total.');
     }
 
     const porAgregar = files.slice(0, disponibles).map((file) => ({
@@ -225,16 +254,15 @@ export default function NuevaOrdenPage() {
   };
 
   // Estados de validación
+  const esCelular = formData.tipo_dispositivo === 'celular';
   const nombreLleno = formData.nombre_cliente.trim().length > 0;
-  const telefonoLleno = formData.telefono_cliente.trim().length > 0;
   const telefonoValido = formData.telefono_cliente.trim().length === 10 && !isNaN(formData.telefono_cliente.trim());
   const datosClienteCompletos = nombreLleno && telefonoValido;
 
   const imeiLleno = formData.imei_o_serie.trim().length > 0;
-  const imeiValido =
-    formData.tipo_dispositivo === 'celular'
-      ? formData.imei_o_serie.trim().length === 15 && !isNaN(formData.imei_o_serie.trim())
-      : formData.imei_o_serie.trim().length >= 4 && formData.imei_o_serie.trim().length <= 30;
+  const imeiValido = esCelular
+    ? formData.imei_o_serie.trim().length === 15 && !isNaN(formData.imei_o_serie.trim())
+    : formData.imei_o_serie.trim().length >= 4 && formData.imei_o_serie.trim().length <= 30;
 
   const marcaLlena = formData.marca.trim().length > 0;
   const modeloLleno = formData.modelo.trim().length > 0;
@@ -255,6 +283,16 @@ export default function NuevaOrdenPage() {
     accesoriosValidos &&
     fotosValidas;
 
+  const tipoActual = TIPOS_DISPOSITIVO.find((t) => t.value === formData.tipo_dispositivo) || TIPOS_DISPOSITIVO[0];
+  const IconoTipoActual = tipoActual.icon;
+  const placeholders = PLACEHOLDERS_EQUIPO[formData.tipo_dispositivo] || PLACEHOLDERS_EQUIPO.otro;
+
+  /**
+   * Registra cliente, dispositivo (mapeando tipos visuales al catálogo del backend) y orden con fotos.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} e Evento de envío del formulario.
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -274,9 +312,9 @@ export default function NuevaOrdenPage() {
 
     if (!imeiValido) {
       setError(
-        formData.tipo_dispositivo === 'celular'
+        esCelular
           ? 'El IMEI del celular debe contener exactamente 15 dígitos numéricos.'
-          : 'El número de serie debe tener entre 4 y 30 caracteres.',
+          : 'El número de serie (S/N) debe tener entre 4 y 30 caracteres.',
       );
       setLoading(false);
       return;
@@ -324,14 +362,14 @@ export default function NuevaOrdenPage() {
         }
       }
 
-      // 2. Resolver Dispositivo
+      // 2. Resolver Dispositivo (impresora y pc_escritorio se guardan como "otro" para respetar el esquema SQL)
       let dispositivoId;
       try {
         const resDisp = await apiRequest('/api/dispositivos', {
           method: 'POST',
           body: {
             cliente_id: clienteId,
-            tipo: formData.tipo_dispositivo,
+            tipo: tipoActual.apiTipo,
             marca: formData.marca.trim(),
             modelo: formData.modelo.trim(),
             color: formData.color.trim() || undefined,
@@ -373,23 +411,18 @@ export default function NuevaOrdenPage() {
     }
   };
 
-  const tipoActual = tiposDispositivo.find((t) => t.value === formData.tipo_dispositivo) || tiposDispositivo[0];
-  const IconoTipoActual = tipoActual.icon;
-
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0B0D12] flex flex-col font-sans pb-16">
       {/* ================= BARRA SUPERIOR Y NAVEGACIÓN ================= */}
       <header className="bg-white border-b border-slate-200 px-6 py-3.5 sticky top-0 z-30 flex items-center justify-between shadow-sm">
-        {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium">
           <Link to="/dashboard" className="hover:text-[#24529F] transition-colors">
-            Órdenes
+            Inicio
           </Link>
           <span className="text-slate-300">/</span>
           <span className="text-slate-800 font-semibold">Nueva orden</span>
         </nav>
 
-        {/* Buscador superior */}
         <div className="relative hidden md:block w-72 lg:w-80">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
           <input
@@ -459,7 +492,6 @@ export default function NuevaOrdenPage() {
                   )}
                 </div>
 
-                {/* Banner de cliente existente reutilizado */}
                 {clienteExistente && (
                   <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl p-3.5 flex items-start gap-3 animate-in fade-in">
                     <Users className="w-4 h-4 text-[#1E3A8A] shrink-0 mt-0.5" />
@@ -537,7 +569,7 @@ export default function NuevaOrdenPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Menú desplegable personalizado de Tipo de Dispositivo */}
+                  {/* Menú desplegable de Tipo de Dispositivo */}
                   <div className="relative" ref={dropdownRef}>
                     <label className="block text-xs font-medium text-slate-700 mb-1.5">
                       Tipo de dispositivo *
@@ -545,7 +577,7 @@ export default function NuevaOrdenPage() {
                     <button
                       type="button"
                       onClick={() => setDropdownAbierto(!dropdownAbierto)}
-                      className="w-full bg-white border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 flex items-center justify-between transition-all focus:outline-none focus:border-[#24529F] shadow-sm"
+                      className="w-full bg-white border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 flex items-center justify-between transition-all focus:outline-none focus:border-[#24529F] shadow-sm cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
                         <IconoTipoActual className="w-4 h-4 text-[#24529F]" />
@@ -560,7 +592,7 @@ export default function NuevaOrdenPage() {
 
                     {dropdownAbierto && (
                       <div className="absolute top-full left-0 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1.5 animate-in fade-in zoom-in-95">
-                        {tiposDispositivo.map((t) => {
+                        {TIPOS_DISPOSITIVO.map((t) => {
                           const Icono = t.icon;
                           const seleccionado = t.value === formData.tipo_dispositivo;
                           return (
@@ -568,7 +600,7 @@ export default function NuevaOrdenPage() {
                               key={t.value}
                               type="button"
                               onClick={() => seleccionarTipoDispositivo(t.value)}
-                              className={`w-full px-3.5 py-2 text-xs flex items-center justify-between transition-colors ${
+                              className={`w-full px-3.5 py-2 text-xs flex items-center justify-between transition-colors cursor-pointer ${
                                 seleccionado
                                   ? 'bg-blue-50 text-[#24529F] font-semibold'
                                   : 'text-slate-700 hover:bg-slate-50'
@@ -597,7 +629,7 @@ export default function NuevaOrdenPage() {
                         required
                         value={formData.marca}
                         onChange={handleChange}
-                        placeholder={formData.tipo_dispositivo === 'laptop' ? 'Ej. HP, Dell, Apple' : 'Ej. Samsung, Apple'}
+                        placeholder={placeholders.marca}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] transition-all"
                       />
                     </div>
@@ -612,7 +644,7 @@ export default function NuevaOrdenPage() {
                         required
                         value={formData.modelo}
                         onChange={handleChange}
-                        placeholder={formData.tipo_dispositivo === 'laptop' ? 'Ej. Pavilion 15' : 'Ej. Galaxy A54 5G'}
+                        placeholder={placeholders.modelo}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] transition-all"
                       />
                     </div>
@@ -634,7 +666,7 @@ export default function NuevaOrdenPage() {
 
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                      SN / IMEI *
+                      {esCelular ? 'IMEI *' : 'Número de serie (S/N) *'}
                     </label>
                     <div className="relative">
                       <input
@@ -643,23 +675,25 @@ export default function NuevaOrdenPage() {
                         required
                         value={formData.imei_o_serie}
                         onChange={handleChange}
-                        placeholder={formData.tipo_dispositivo === 'celular' ? 'Ej. 356984091234567' : 'Ej. SN-ABC12345678'}
+                        placeholder={esCelular ? 'Ej. 356984091234567' : 'Ej. SN-ABC12345678'}
                         className={`w-full bg-white border rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono focus:outline-none transition-all ${
-                          formData.tipo_dispositivo === 'celular' && imeiLleno && !imeiValido
+                          imeiLleno && !imeiValido
                             ? 'border-rose-300 focus:border-rose-500 bg-rose-50/20'
                             : 'border-slate-200 focus:border-[#24529F]'
                         }`}
                       />
-                      {formData.tipo_dispositivo === 'celular' && (
+                      {esCelular && (
                         <span className="absolute right-3.5 top-2.5 text-[11px] font-mono text-slate-400 select-none">
                           {formData.imei_o_serie.length}/15
                         </span>
                       )}
                     </div>
 
-                    {formData.tipo_dispositivo === 'celular' && imeiLleno && !imeiValido && (
+                    {imeiLleno && !imeiValido && (
                       <p className="text-[11px] text-rose-600 mt-1">
-                        El IMEI debe contener exactamente 15 dígitos numéricos
+                        {esCelular
+                          ? 'El IMEI debe contener exactamente 15 dígitos numéricos'
+                          : 'El número de serie (S/N) debe tener entre 4 y 30 caracteres'}
                       </p>
                     )}
                   </div>
@@ -720,7 +754,7 @@ export default function NuevaOrdenPage() {
                     </label>
                     {!accesoriosValidos && (
                       <span className="text-[11px] text-amber-600 font-medium">
-                        Selecciona al menos uno o marca "Ninguno"
+                        Selecciona al menos uno o marca &ldquo;Ninguno&rdquo;
                       </span>
                     )}
                   </div>
@@ -733,7 +767,7 @@ export default function NuevaOrdenPage() {
                           key={acc}
                           type="button"
                           onClick={() => toggleAccesorio(acc)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
                             activo
                               ? 'border-blue-600 bg-blue-50 text-[#1E3A8A] shadow-sm'
                               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -751,7 +785,6 @@ export default function NuevaOrdenPage() {
                       );
                     })}
 
-                    {/* Accesorios personalizados extras */}
                     {formData.accesorios
                       .filter((a) => !accesoriosPredefinidos.includes(a))
                       .map((cust) => (
@@ -764,14 +797,13 @@ export default function NuevaOrdenPage() {
                           <button
                             type="button"
                             onClick={() => toggleAccesorio(cust)}
-                            className="text-slate-400 hover:text-rose-600 ml-0.5 font-bold"
+                            className="text-slate-400 hover:text-rose-600 ml-0.5 font-bold cursor-pointer"
                           >
                             ×
                           </button>
                         </span>
                       ))}
 
-                    {/* Botón "+ Otro..." */}
                     {mostrarOtroInput ? (
                       <div className="flex items-center gap-1.5">
                         <input
@@ -786,14 +818,14 @@ export default function NuevaOrdenPage() {
                         <button
                           type="button"
                           onClick={handleAgregarOtroAccesorio}
-                          className="px-2.5 py-1 bg-[#0D1B3E] text-white text-xs rounded-xl font-medium"
+                          className="px-2.5 py-1 bg-[#0D1B3E] text-white text-xs rounded-xl font-medium cursor-pointer"
                         >
                           OK
                         </button>
                         <button
                           type="button"
                           onClick={() => setMostrarOtroInput(false)}
-                          className="text-slate-400 hover:text-slate-600 text-xs px-1"
+                          className="text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer"
                         >
                           ✕
                         </button>
@@ -802,7 +834,7 @@ export default function NuevaOrdenPage() {
                       <button
                         type="button"
                         onClick={() => setMostrarOtroInput(true)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-colors cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Otro...</span>
@@ -829,7 +861,6 @@ export default function NuevaOrdenPage() {
                   />
 
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* Botón para tomar o subir foto */}
                     {fotos.length < 5 && (
                       <button
                         type="button"
@@ -846,7 +877,6 @@ export default function NuevaOrdenPage() {
                       </button>
                     )}
 
-                    {/* Previsualización de fotos subidas */}
                     {fotos.map((foto) => (
                       <div
                         key={foto.id}
@@ -863,7 +893,7 @@ export default function NuevaOrdenPage() {
                         <button
                           type="button"
                           onClick={() => eliminarFoto(foto.id)}
-                          className="absolute top-2 right-2 bg-black/60 hover:bg-rose-600 text-white rounded-full p-1 transition-colors shadow-sm"
+                          className="absolute top-2 right-2 bg-black/60 hover:bg-rose-600 text-white rounded-full p-1 transition-colors shadow-sm cursor-pointer"
                           title="Eliminar foto"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -871,7 +901,6 @@ export default function NuevaOrdenPage() {
                       </div>
                     ))}
 
-                    {/* Ranura con contador de fotos */}
                     <div className="w-28 h-36 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-xs font-mono text-slate-400 shrink-0">
                       {fotos.length} / 5
                     </div>
@@ -885,7 +914,6 @@ export default function NuevaOrdenPage() {
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
                 <h3 className="font-bold text-base text-[#0B0D12]">Resumen</h3>
 
-                {/* Tarjeta oscura del folio y estado */}
                 <div className="bg-[#0D1B3E] rounded-2xl p-4 text-white shadow-inner space-y-2.5">
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 font-bold block">
                     FOLIO A GENERAR
@@ -902,7 +930,6 @@ export default function NuevaOrdenPage() {
                   </div>
                 </div>
 
-                {/* Lista de resumen reactiva en vivo */}
                 <div className="space-y-2.5 text-xs border-b border-slate-100 pb-4">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Cliente</span>
@@ -942,7 +969,7 @@ export default function NuevaOrdenPage() {
                   </div>
                 </div>
 
-                {/* Checklist de validación visual consistente */}
+                {/* Checklist de validación reactiva */}
                 <div className="space-y-1.5 text-xs">
                   {datosClienteCompletos ? (
                     <div className="text-emerald-600 font-medium flex items-center gap-1.5">
@@ -959,17 +986,21 @@ export default function NuevaOrdenPage() {
                   {imeiValido ? (
                     <div className="text-emerald-600 font-medium flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>IMEI / Serie válido</span>
+                      <span>{esCelular ? 'IMEI válido' : 'Número de serie (S/N) válido'}</span>
                     </div>
                   ) : imeiLleno ? (
                     <div className="text-rose-600 font-medium flex items-center gap-1.5">
                       <span className="w-3.5 text-center font-bold">✕</span>
-                      <span>IMEI incompleto ({formData.imei_o_serie.length}/15)</span>
+                      <span>
+                        {esCelular
+                          ? `IMEI incompleto (${formData.imei_o_serie.length}/15)`
+                          : 'S/N inválido (4 a 30 caracteres)'}
+                      </span>
                     </div>
                   ) : (
                     <div className="text-amber-600 font-medium flex items-center gap-1.5">
                       <span className="w-3.5 text-center font-bold">•</span>
-                      <span>SN / IMEI pendiente</span>
+                      <span>{esCelular ? 'IMEI pendiente' : 'Número de serie (S/N) pendiente'}</span>
                     </div>
                   )}
 
@@ -986,13 +1017,12 @@ export default function NuevaOrdenPage() {
                   )}
                 </div>
 
-                {/* Botón principal de submit */}
                 <button
                   type="submit"
                   disabled={loading || !formularioListo}
                   className={`w-full py-3 px-4 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-2 ${
                     formularioListo && !loading
-                      ? 'bg-[#24529F] hover:bg-[#1a3d7c] text-white active:scale-[0.98]'
+                      ? 'bg-[#24529F] hover:bg-[#1a3d7c] text-white active:scale-[0.98] cursor-pointer'
                       : 'bg-slate-300 text-white cursor-not-allowed'
                   }`}
                 >
