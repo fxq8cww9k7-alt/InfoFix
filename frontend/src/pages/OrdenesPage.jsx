@@ -1,7 +1,6 @@
 /**
  * @file OrdenesPage.jsx
  * @description Listado completo de órdenes de reparación (activas y entregadas) con filtros por etapa y búsqueda.
- * @task T14 (RF-13, RF-14)
  * @author Yahúm Adair Hernández Martínez
  */
 

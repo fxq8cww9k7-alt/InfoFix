@@ -2,7 +2,6 @@
  * @file app.js
  * @description Aplicación Express (bloque 2.1): middlewares globales y montaje de rutas de la API.
  *              Se exporta sin `listen` para poder usarla en las pruebas.
- * @task T04
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

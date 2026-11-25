@@ -1,7 +1,6 @@
 /**
  * @file verificar.routes.js
  * @description Consulta pública del certificado por token (sin sesión).
- * @task T23 (RF-12)
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

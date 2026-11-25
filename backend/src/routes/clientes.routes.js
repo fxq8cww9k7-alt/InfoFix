@@ -1,7 +1,6 @@
 /**
  * @file clientes.routes.js
  * @description Registro, búsqueda, ficha y edición de clientes.
- * @task T09 (RF-02; pantalla P18)
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

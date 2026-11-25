@@ -85,7 +85,7 @@ export default function CertificadoModal({ isOpen, ordenId, onClose }) {
           </div>
         </div>
 
-        {/* Hoja del Certificado Digital (P13 Figma) */}
+        {/* Hoja del Certificado Digital */}
         <div className="p-8 space-y-5 text-xs text-slate-800 print:p-6 print:space-y-4">
           {loading ? (
             <div className="py-16 text-center text-slate-400 font-mono text-xs">

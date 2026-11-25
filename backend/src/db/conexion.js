@@ -2,7 +2,6 @@
  * @file conexion.js
  * @description Acceso a datos (bloque 2.5): conexión SQLite, creación del esquema y transacciones.
  *              Usa el módulo nativo node:sqlite, así no hay que compilar dependencias en Windows/Mac.
- * @task T04
  * @author María Fernanda González Rodríguez
  */
 const fs = require('node:fs');

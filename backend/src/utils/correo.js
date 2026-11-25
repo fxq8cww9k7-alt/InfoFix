@@ -2,7 +2,6 @@
  * @file correo.js
  * @description Envío de correos (recuperación de contraseña P3 y avisos al cliente P10).
  *              Sin SMTP configurado, el correo se imprime en la consola para poder probar en local.
- * @task P3, P10 (Act. 11)
  * @author María Fernanda González Rodríguez
  */
 const nodemailer = require('nodemailer');

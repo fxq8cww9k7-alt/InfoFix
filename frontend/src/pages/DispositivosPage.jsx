@@ -1,7 +1,6 @@
 /**
  * @file DispositivosPage.jsx
  * @description Catálogo de dispositivos multiequipo con filtros por tipo y consulta de historial certificado.
- * @task T10 (RF-03, RF-15)
  * @author Yahúm Adair Hernández Martínez
  */
 

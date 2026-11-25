@@ -200,7 +200,7 @@ export default function NotificacionesPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0A0D12] flex flex-col lg:flex-row font-sans">
-      {/* ================= SIDEBAR LATERAL IZQUIERDO ================= */}
+      {/* SIDEBAR LATERAL IZQUIERDO */}
       <aside className="w-full lg:w-64 bg-[#0D1B3E] text-slate-300 flex flex-col justify-between shrink-0 border-r border-slate-800">
         <div>
           <Link to="/dashboard" className="p-6 flex items-center gap-3 border-b border-white/10">
@@ -290,7 +290,7 @@ export default function NotificacionesPage() {
         </div>
       </aside>
 
-      {/* ================= CONTENIDO PRINCIPAL ================= */}
+      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra superior */}
         <header className="bg-white border-b border-slate-200 px-6 lg:px-8 py-3.5 flex items-center justify-between shadow-sm sticky top-0 z-20 gap-4">

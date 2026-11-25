@@ -1,7 +1,6 @@
 /**
  * @file AuthPage.jsx
  * @description Pantallas de Inicio de sesión (P1), Registro de usuario (P2) y Recuperación/Restablecimiento de contraseña (P3).
- * @task T07 (RF-01)
  * @author Yahúm Adair Hernández Martínez
  */
 
@@ -111,7 +110,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
 
   /**
    * Procesa el inicio de sesión del personal del taller (RF-01).
-   * Limpia los campos en caso de error según especifica la ERS.
+   * Limpia los campos en caso de error.
    */
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -298,7 +297,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
       {/* COLUMNA DERECHA: Formularios sobre fondo blanco */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-12 lg:p-16 bg-white">
         <div className="w-full max-w-[420px]">
-          {/* ==================== P1: INICIAR SESIÓN ==================== */}
+          {/* P1: INICIAR SESIÓN */}
           {modo === 'login' && (
             <div>
               <h2 className="text-2xl lg:text-[28px] font-bold text-[#0B0D12] tracking-tight">
@@ -395,7 +394,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
             </div>
           )}
 
-          {/* ==================== P2: REGISTRO DE USUARIO ==================== */}
+          {/* P2: REGISTRO DE USUARIO */}
           {modo === 'registro' && (
             <div>
               <h2 className="text-2xl lg:text-[28px] font-bold text-[#0B0D12] tracking-tight">
@@ -495,7 +494,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
                   </p>
                 )}
 
-                {/* Medidor de seguridad de contraseña (P2 Figma) */}
+                {/* Medidor de seguridad de contraseña */}
                 <div className="pt-1">
                   <div className="grid grid-cols-4 gap-1.5 mb-1.5">
                     {[1, 2, 3, 4].map((barra) => (
@@ -542,7 +541,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
             </div>
           )}
 
-          {/* ==================== P2 VARIANTE: CUENTA CREADA ==================== */}
+          {/* P2 VARIANTE: CUENTA CREADA */}
           {modo === 'cuenta_creada' && (
             <div className="text-center py-6">
               <div className="w-14 h-14 rounded-full bg-[#E3F4EC] text-[#1F8A4C] flex items-center justify-center mx-auto mb-5">
@@ -574,7 +573,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
             </div>
           )}
 
-          {/* ==================== P3: RECUPERAR CONTRASEÑA ==================== */}
+          {/* P3: RECUPERAR CONTRASEÑA */}
           {modo === 'recuperar' && (
             <div>
               <button
@@ -638,7 +637,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
             </div>
           )}
 
-          {/* ==================== P3 VARIANTE: CORREO ENVIADO ==================== */}
+          {/* P3 VARIANTE: CORREO ENVIADO */}
           {modo === 'correo_enviado' && (
             <div className="text-center py-6">
               <div className="w-14 h-14 rounded-full bg-[#E3F4EC] text-[#1F8A4C] flex items-center justify-center mx-auto mb-5">
@@ -675,7 +674,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
             </div>
           )}
 
-          {/* ==================== P3 PASO 2: RESTABLECER CONTRASEÑA ==================== */}
+          {/* P3 PASO 2: RESTABLECER CONTRASEÑA */}
           {modo === 'restablecer' && (
             <div>
               <h2 className="text-2xl lg:text-[28px] font-bold text-[#0B0D12] tracking-tight">
@@ -773,7 +772,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
             </div>
           )}
 
-          {/* ==================== P3 VARIANTE: CONTRASEÑA ACTUALIZADA ==================== */}
+          {/* P3 VARIANTE: CONTRASEÑA ACTUALIZADA */}
           {modo === 'contrasena_actualizada' && (
             <div className="text-center py-6">
               <div className="w-14 h-14 rounded-full bg-[#E3F4EC] text-[#1F8A4C] flex items-center justify-center mx-auto mb-5">
@@ -795,7 +794,7 @@ export default function AuthPage({ modoInicial = 'login' }) {
             </div>
           )}
 
-          {/* ==================== P3 VARIANTE: ENLACE CADUCADO ==================== */}
+          {/* P3 VARIANTE: ENLACE CADUCADO */}
           {modo === 'enlace_caducado' && (
             <div className="text-center py-6">
               <div className="w-14 h-14 rounded-full bg-[#FDECEC] text-[#C53030] flex items-center justify-center mx-auto mb-5">

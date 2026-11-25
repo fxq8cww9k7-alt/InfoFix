@@ -1,7 +1,6 @@
 /**
  * @file estatus.routes.js
  * @description Consulta pública del avance de una reparación con el QR de la nota de servicio (sin sesión).
- * @task P15 (Act. 11)
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

@@ -2,7 +2,6 @@
  * @file ordenes.service.js
  * @description Gestión de órdenes (bloque 2.3): folios, máquina de estados, evidencias,
  *              refacciones, garantía, bitácora, dashboard y búsqueda.
- * @task T12, T13, T15, T16, T17, T25 (RF-04 a RF-09, RF-13, RF-14; pantallas P4, P6–P9, P17)
  * @author María Fernanda González Rodríguez
  */
 const crypto = require('node:crypto');

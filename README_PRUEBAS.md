@@ -1,4 +1,4 @@
-# Guía rápida — rama `revisar_orden_chat`
+# Guía rápida — InfoFIX (`main`)
 
 ## 1. Cuenta de prueba
 
@@ -23,24 +23,22 @@ npm install
 npm run dev
 ```
 
-## 3. Cómo hacer push sin pisar otras ramas
+## 3. Cómo hacer push
 
-Si quieres subir esta versión a una rama aparte en GitHub para que la prueben sin tocar `develop` ni `main`:
-
-```bash
-git add -A
-git commit -m "fix: version integrada revisar_orden_chat"
-git push origin HEAD:refs/heads/revisar_orden_chat_prueba
-```
-
-Si ya estás seguro de reemplazar `origin/revisar_orden_chat`:
+Para subir `main` al remoto:
 
 ```bash
-git push origin revisar_orden_chat
+git push origin main
 ```
 
-## 4. Qué falta / qué revisar antes de pasar a `develop`
+Si prefieres probar primero en una rama aparte sin tocar `main` en GitHub:
 
-- **SQLite local:** Si ya tenías creado `database/infofix.sqlite` antes de agregar `impresora` y `pc_escritorio`, bórralo y corre `npm run seed` en `backend/` para que tome el `CHECK` nuevo de `database/schema.sql`.
-- **Correos reales:** Con `SMTP_HOST` vacío en `backend/.env`, los correos de recuperación y avisos salen en la consola del backend. Para enviar correos reales hay que llenar `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`.
-- **Pruebas:** Correr `npm test` en `backend/` y `npm run build` en `frontend/` después de cualquier cambio.
+```bash
+git push origin main:refs/heads/main_prueba
+```
+
+## 4. Notas para pruebas y despliegue
+
+- **Base de datos SQLite:** Al arrancar el backend por primera vez se crea `database/infofix.sqlite` usando `database/schema.sql`. Si ya tenías un `.sqlite` viejo de versiones anteriores, bórralo y vuelve a correr `npm run seed` en `backend/`.
+- **Correos:** Con `SMTP_HOST` vacío en `backend/.env`, los correos de recuperación de contraseña y avisos se imprimen en la consola del backend. Para envío real, configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`.
+- **Verificación:** Ejecuta `npm test` en `backend/` y `npm run build` en `frontend/` después de cualquier cambio.

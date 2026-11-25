@@ -4,7 +4,6 @@
  *              Incluye expediente, línea de tiempo inmutable, evidencias reales antes/después con lightbox,
  *              piezas reemplazadas, datos de cliente y equipo, configuración de garantía, checklist
  *              de certificación y todas las variantes oficiales (recién creada, en reparación, entregada/bloqueada, móvil).
- * @task P7 (RF-04, RF-06, RF-07, RF-08, RF-09, RF-10)
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -402,7 +401,7 @@ export default function DetalleOrdenPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0A0D12] flex flex-col lg:flex-row font-sans">
-      {/* ================= BARRA LATERAL IZQUIERDA (ESCRITORIO) ================= */}
+      {/* BARRA LATERAL IZQUIERDA (ESCRITORIO) */}
       <aside className="hidden lg:flex w-64 bg-[#0D1B3E] text-slate-300 flex-col justify-between shrink-0 border-r border-slate-800">
         <div>
           <Link to="/dashboard" className="p-6 flex items-center gap-3 border-b border-white/10">
@@ -489,7 +488,7 @@ export default function DetalleOrdenPage() {
         </div>
       </aside>
 
-      {/* ================= CONTENIDO PRINCIPAL ================= */}
+      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Cabecera móvil (P7 web en celular) */}
         <header className="lg:hidden bg-[#0D1B3E] text-white px-4 py-3.5 sticky top-0 z-20 space-y-1">
@@ -861,7 +860,7 @@ export default function DetalleOrdenPage() {
             </div>
           </div>
 
-          {/* ================= CUADRÍCULA DE DOS COLUMNAS ================= */}
+          {/* CUADRÍCULA DE DOS COLUMNAS */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* COLUMNA IZQUIERDA */}
             <div className="lg:col-span-7 space-y-6">
@@ -1569,7 +1568,7 @@ export default function DetalleOrdenPage() {
         </div>
       </div>
 
-      {/* ================= TOAST FLOTANTE ================= */}
+      {/* TOAST FLOTANTE */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 bg-white text-[#0B0D12] px-4 py-3 rounded-2xl shadow-lg border border-slate-200 flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
@@ -1588,7 +1587,7 @@ export default function DetalleOrdenPage() {
         </div>
       )}
 
-      {/* ================= MODALES ================= */}
+      {/* MODALES */}
       <VerFotoModal
         isOpen={modalFotoAbierto}
         fotos={todasEvidencias}

@@ -67,7 +67,7 @@ export default function NotaServicioModal({ isOpen, ordenId, onClose }) {
           </div>
         </div>
 
-        {/* Contenido imprimible de la nota (P12 Figma) */}
+        {/* Contenido imprimible de la nota */}
         <div className="p-8 space-y-5 text-xs text-slate-800 print:p-6 print:space-y-4">
           {loading ? (
             <div className="py-16 text-center text-slate-400 font-mono text-xs">
@@ -215,7 +215,7 @@ export default function NotaServicioModal({ isOpen, ordenId, onClose }) {
                 </div>
               </div>
 
-              {/* Fotos de recepción e Importante (P12 Figma) */}
+              {/* Fotos de recepción e Importante */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                 <div>
                   <span className="text-[10px] font-mono text-slate-400 uppercase block font-bold mb-1.5">

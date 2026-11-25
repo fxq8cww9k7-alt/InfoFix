@@ -1,7 +1,6 @@
 /**
  * @file auth.routes.js
  * @description Login, registro con código del taller y recuperación de contraseña por correo.
- * @task T05 (RF-01; pantallas P1, P2, P3)
  * @author María Fernanda González Rodríguez
  */
 const crypto = require('node:crypto');

@@ -1,7 +1,6 @@
 /**
  * @file dispositivos.routes.js
  * @description Registro, lista, edición e historial de dispositivos por IMEI/serie.
- * @task T10 (RF-03, RF-15; pantallas P6, P19, P20)
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

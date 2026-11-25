@@ -2,7 +2,6 @@
  * @file validar.js
  * @description Capa de validación (bloque 3): formato, campos obligatorios y respuesta 400
  *              indicando qué campo falló y por qué.
- * @task T09, T10, T12, T13, T17
  * @author María Fernanda González Rodríguez
  */
 const { HttpError } = require('../utils/errores');

@@ -3,7 +3,6 @@
  * @description Certificado digital y código QR (bloque 2.4): requisitos de cierre, token UUID v4,
  *              QR de la URL pública, vista pública del certificado, página pública de estatus
  *              y lista de certificados emitidos.
- * @task T20, T21, T23 (RF-10, RF-11, RF-12, RF-15; pantallas P12–P16)
  * @author María Fernanda González Rodríguez
  */
 const crypto = require('node:crypto');

@@ -2,7 +2,6 @@
  * @file ordenes.routes.js
  * @description Rutas de órdenes de reparación: apertura, estados, fotos, piezas, garantía,
  *              nota de servicio, certificado y avisos al cliente.
- * @task T12, T13, T15, T16, T17, T20, T21 (RF-04 a RF-11, RF-14; pantallas P6–P13, P17)
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

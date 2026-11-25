@@ -1,7 +1,6 @@
 /**
  * @file certificados.routes.js
  * @description Lista de certificados emitidos con búsqueda y filtro de garantía.
- * @task P14 (Act. 11)
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

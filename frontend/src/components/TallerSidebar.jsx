@@ -1,7 +1,6 @@
 /**
  * @file TallerSidebar.jsx
  * @description Menú lateral de navegación compartido para el panel interno del taller InfoFIX.
- * @task T14 (RF-13, RF-14)
  * @author Yahúm Adair Hernández Martínez
  */
 

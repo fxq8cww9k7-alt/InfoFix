@@ -1,7 +1,6 @@
 /**
  * @file ClientesPage.jsx
  * @description Catálogo de clientes del taller con búsqueda, ordenamiento, ficha detallada y edición de contacto.
- * @task T09 (RF-02)
  * @author Yahúm Adair Hernández Martínez
  */
 

@@ -2,7 +2,6 @@
  * @file ImprimiblePage.jsx
  * @description Vista imprimible del certificado digital de entrega y garantía (P13 / T22).
  * Optimizada para formato de impresión Media Carta.
- * @task T22 (RF-10, RF-11)
  * @author Yahúm Adair Hernández Martínez
  */
 

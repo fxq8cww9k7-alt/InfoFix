@@ -821,7 +821,7 @@ export default function NuevaOrdenPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0B0D12] flex flex-col font-sans pb-16">
-      {/* ================= BARRA SUPERIOR ESCRITORIO ================= */}
+      {/* BARRA SUPERIOR ESCRITORIO */}
       <header className="hidden md:flex bg-white border-b border-slate-200 px-6 py-3.5 sticky top-0 z-30 items-center justify-between shadow-sm">
         <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium">
           <Link to="/dashboard" className="hover:text-[#24529F] transition-colors">
@@ -851,7 +851,7 @@ export default function NuevaOrdenPage() {
         </form>
       </header>
 
-      {/* ================= BARRA SUPERIOR MÓVIL (WIZARD 3 PASOS) ================= */}
+      {/* BARRA SUPERIOR MÓVIL (WIZARD 3 PASOS) */}
       <header className="flex md:hidden bg-[#0D1B3E] text-white px-4 py-3.5 sticky top-0 z-30 items-center justify-between shadow-sm">
         <div className="flex items-center gap-2.5">
           <button
@@ -866,7 +866,7 @@ export default function NuevaOrdenPage() {
         <span className="text-xs font-mono text-slate-300">Paso {pasoMovil} de 3</span>
       </header>
 
-      {/* ================= ENCABEZADO DE PÁGINA (ESCRITORIO) ================= */}
+      {/* ENCABEZADO DE PÁGINA (ESCRITORIO) */}
       <div className="hidden md:flex max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2 w-full flex-row items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#0B0D12] tracking-tight">Nueva orden de reparación</h1>
@@ -882,7 +882,7 @@ export default function NuevaOrdenPage() {
         </Link>
       </div>
 
-      {/* ================= CONTENIDO PRINCIPAL ================= */}
+      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 md:py-6 w-full">
         {error && (
           <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-xs">

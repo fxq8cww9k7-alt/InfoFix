@@ -2,7 +2,6 @@
  * @file auth.js
  * @description Middleware de seguridad (bloque 2.2): verifica el JWT en las rutas privadas.
  *              En esta versión no hay roles: todo el personal del taller tiene los mismos permisos.
- * @task T05 (RF-01)
  * @author María Fernanda González Rodríguez
  */
 const jwt = require('jsonwebtoken');

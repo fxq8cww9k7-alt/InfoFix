@@ -3,7 +3,6 @@
  * @description Notificaciones del panel (P5): avisos por evento (certificado emitido, aviso enviado,
  *              correo no entregado) y avisos automáticos por reglas (orden detenida, garantía por vencer),
  *              con estado leído/no leído por usuario.
- * @task P5 (Act. 11)
  * @author María Fernanda González Rodríguez
  */
 const config = require('../config');

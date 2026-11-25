@@ -134,7 +134,7 @@ export default function PublicStatusPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0B0D12] pb-12 font-sans">
-      {/* Cabecera Navy institucional (P15 Figma) */}
+      {/* Cabecera Navy institucional */}
       <header className="bg-[#0D1B3E] text-white px-5 py-3.5 sticky top-0 z-30 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">

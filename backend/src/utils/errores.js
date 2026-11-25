@@ -1,7 +1,6 @@
 /**
  * @file errores.js
  * @description Error HTTP del dominio y middleware que lo convierte en respuesta JSON (bloque 3.5).
- * @task T04
  * @author María Fernanda González Rodríguez
  */
 const multer = require('multer');

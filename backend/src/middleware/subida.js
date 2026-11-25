@@ -3,7 +3,6 @@
  * @description Recepción y validación de fotografías (bloque 3.3): solo JPG/PNG de máximo 5 MB.
  *              Los archivos se reciben en memoria y se escriben a disco hasta que la operación
  *              se valida, para no dejar fotos huérfanas cuando una petición se rechaza.
- * @task T15, T16 (RF-05, RF-07)
  * @author María Fernanda González Rodríguez
  */
 const fs = require('node:fs');

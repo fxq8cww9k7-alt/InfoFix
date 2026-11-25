@@ -1,7 +1,6 @@
 /**
  * @file server.js
  * @description Punto de entrada: levanta la API REST en el puerto configurado.
- * @task T04
  * @author María Fernanda González Rodríguez
  */
 const config = require('./config');

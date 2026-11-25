@@ -1,7 +1,6 @@
 /**
  * @file config.js
  * @description Carga y centraliza las variables de entorno del backend.
- * @task T04
  * @author María Fernanda González Rodríguez
  */
 const fs = require('node:fs');

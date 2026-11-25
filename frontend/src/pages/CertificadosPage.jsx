@@ -1,7 +1,6 @@
 /**
  * @file CertificadosPage.jsx
  * @description Listado de certificados digitales emitidos con filtro de vigencia de garantía y accesos a impresión y verificación pública.
- * @task T22 (RF-10, RF-11, RF-12)
  * @author Yahúm Adair Hernández Martínez
  */
 

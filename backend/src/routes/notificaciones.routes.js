@@ -1,7 +1,6 @@
 /**
  * @file notificaciones.routes.js
  * @description Notificaciones del panel (campana de la barra superior y página completa).
- * @task P5 (Act. 11)
  * @author María Fernanda González Rodríguez
  */
 const express = require('express');

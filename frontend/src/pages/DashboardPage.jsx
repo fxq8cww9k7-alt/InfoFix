@@ -233,7 +233,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0B0D12] flex flex-col lg:flex-row font-sans">
-      {/* ================= SIDEBAR LATERAL IZQUIERDO ================= */}
+      {/* SIDEBAR LATERAL IZQUIERDO */}
       <aside className="w-full lg:w-64 bg-[#0D1B3E] text-slate-300 flex flex-col justify-between shrink-0 border-r border-slate-800">
         <div>
           <div className="p-6 flex items-center gap-3 border-b border-white/10">
@@ -328,7 +328,7 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* ================= CONTENIDO PRINCIPAL ================= */}
+      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra superior de navegación */}
         <header className="bg-white border-b border-slate-200 px-6 lg:px-8 py-3.5 flex items-center justify-between shadow-sm sticky top-0 z-20">
@@ -512,7 +512,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ================= TARJETAS DE MÉTRICAS (FIGMA P4) ================= */}
+          {/* TARJETAS DE MÉTRICAS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-[#0D1B3E] border border-[#0D1B3E] rounded-2xl p-5 shadow-sm text-white flex flex-col justify-between min-h-[135px]">
               <div>
@@ -591,7 +591,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ================= LAYOUT EN 2 COLUMNAS: ÓRDENES + ETAPAS ================= */}
+          {/* LAYOUT EN 2 COLUMNAS: ÓRDENES + ETAPAS */}
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 w-full">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">

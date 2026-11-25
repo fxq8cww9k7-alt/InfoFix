@@ -3,7 +3,6 @@
  * @description Avisos al cliente (P10): arma el mensaje con los datos de la orden, lo publica en la
  *              página de estatus y/o lo envía por correo; registra el envío y, si el correo no se
  *              entrega, genera la notificación "Correo no entregado".
- * @task P10 (Act. 11)
  * @author María Fernanda González Rodríguez
  */
 const config = require('../config');
