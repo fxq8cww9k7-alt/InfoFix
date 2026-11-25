@@ -12,7 +12,7 @@ const { resumenGarantia } = require('../services/certificado.service');
 
 const router = express.Router();
 
-const TIPOS = ['celular', 'tablet', 'laptop', 'otro'];
+const TIPOS = ['celular', 'tablet', 'laptop', 'impresora', 'pc_escritorio', 'otro'];
 const COLUMNAS = 'id, cliente_id, tipo, marca, modelo, color, imei_o_serie, contrasena_equipo, fecha_registro';
 
 const obtener = (id) => db.prepare(`SELECT ${COLUMNAS} FROM dispositivos WHERE id = ?`).get(id);
@@ -31,7 +31,7 @@ router.get('/', (req, res) => {
 
   const q = texto(req.query.q);
   const tipo = texto(req.query.tipo);
-  if (tipo && !TIPOS.includes(tipo)) throw new HttpError(400, 'El tipo debe ser celular, tablet, laptop u otro');
+  if (tipo && !TIPOS.includes(tipo)) throw new HttpError(400, 'El tipo debe ser celular, tablet, laptop, impresora, pc de escritorio u otro');
   const condiciones = [];
   const params = {};
   if (q) {

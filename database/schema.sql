@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 CREATE TABLE IF NOT EXISTS dispositivos (
   id                 INTEGER PRIMARY KEY AUTOINCREMENT,
   cliente_id         INTEGER NOT NULL REFERENCES clientes(id) ON DELETE RESTRICT,
-  tipo               TEXT    NOT NULL CHECK (tipo IN ('celular', 'tablet', 'laptop', 'otro')),
+  tipo TEXT NOT NULL CHECK (tipo IN ('celular', 'tablet', 'laptop', 'impresora', 'pc_escritorio', 'otro')),
   marca              TEXT    NOT NULL CHECK (length(trim(marca)) > 0),
   modelo             TEXT    NOT NULL CHECK (length(trim(modelo)) > 0),
   color              TEXT,
