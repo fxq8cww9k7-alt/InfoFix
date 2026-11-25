@@ -55,6 +55,11 @@ function RootRedirect() {
   return user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
 }
 
+/**
+ * Componente raíz de rutas de InfoFIX.
+ *
+ * @returns {JSX.Element} Árbol de rutas públicas y privadas del taller.
+ */
 export default function App() {
   return (
     <AuthProvider>
@@ -101,6 +106,14 @@ export default function App() {
             }
           />
           <Route
+            path="/ordenes/:id/nota"
+            element={
+              <ProtectedRoute>
+                <ImprimiblePage modo="nota" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/clientes"
             element={
               <ProtectedRoute>
@@ -128,7 +141,7 @@ export default function App() {
             path="/certificados/:token"
             element={
               <ProtectedRoute>
-                <ImprimiblePage />
+                <ImprimiblePage modo="certificado" />
               </ProtectedRoute>
             }
           />

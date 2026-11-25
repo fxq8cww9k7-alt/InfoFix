@@ -14,6 +14,8 @@ import {
   Smartphone,
   Tablet,
   Laptop,
+  Printer,
+  Monitor,
   Cpu,
   History,
   X,
@@ -26,18 +28,41 @@ const TIPOS = [
   { id: 'celular', label: 'Celular' },
   { id: 'tablet', label: 'Tablet' },
   { id: 'laptop', label: 'Laptop' },
+  { id: 'impresora', label: 'Impresora' },
+  { id: 'pc_escritorio', label: 'PC de Escritorio' },
   { id: 'otro', label: 'Otro' },
 ];
 
 /**
+ * Convierte la clave interna del tipo de dispositivo en una etiqueta legible.
+ *
+ * @param {string} tipo Clave de tipo almacenada en la base de datos.
+ * @returns {string} Nombre amigable para mostrar en pantalla.
+ */
+function formatearTipoDispositivo(tipo) {
+  const mapa = {
+    celular: 'Celular',
+    tablet: 'Tablet',
+    laptop: 'Laptop',
+    impresora: 'Impresora',
+    pc_escritorio: 'PC de Escritorio',
+    otro: 'Otro',
+  };
+  return mapa[tipo] || tipo;
+}
+
+/**
  * Devuelve el ícono correspondiente a cada categoría de dispositivo soportada (RF-03).
  *
- * @param {string} tipo Tipo de dispositivo ('celular' | 'tablet' | 'laptop' | 'otro').
+ * @param {Object} props Propiedades del componente.
+ * @param {string} props.tipo Tipo de dispositivo.
  * @returns {JSX.Element} Ícono representativo.
  */
 function IconoDispositivo({ tipo }) {
   if (tipo === 'tablet') return <Tablet className="w-4 h-4 text-[#24529F]" />;
   if (tipo === 'laptop') return <Laptop className="w-4 h-4 text-[#24529F]" />;
+  if (tipo === 'impresora') return <Printer className="w-4 h-4 text-[#24529F]" />;
+  if (tipo === 'pc_escritorio') return <Monitor className="w-4 h-4 text-[#24529F]" />;
   if (tipo === 'otro') return <Cpu className="w-4 h-4 text-[#24529F]" />;
   return <Smartphone className="w-4 h-4 text-[#24529F]" />;
 }

@@ -1,6 +1,7 @@
 /**
  * @file NuevaOrdenPage.jsx
- * @description Pantalla para el registro de nuevos clientes, dispositivos y creación de órdenes (P6).
+ * @description Recepción de órdenes con búsqueda/actualización de clientes, reutilización de equipos por IMEI/SN,
+ *              tipos de dispositivo extendidos y redirección a la nota de servicio imprimible con QR (P6 / P12).
  * @task T11 (RF-02, RF-03, RF-04, RF-05, RF-07)
  * @author Yahúm Adair Hernández Martínez
  */
@@ -25,30 +26,58 @@ import {
   Monitor,
   HardDrive,
   ChevronDown,
+  Edit3,
+  History,
 } from 'lucide-react';
 
 const TIPOS_DISPOSITIVO = [
-  { value: 'celular', apiTipo: 'celular', label: 'Celular', icon: Smartphone },
-  { value: 'tablet', apiTipo: 'tablet', label: 'Tablet', icon: Tablet },
-  { value: 'laptop', apiTipo: 'laptop', label: 'Laptop', icon: Laptop },
-  { value: 'pc_escritorio', apiTipo: 'otro', label: 'PC de escritorio', icon: Monitor },
-  { value: 'impresora', apiTipo: 'otro', label: 'Impresora', icon: Printer },
-  { value: 'otro', apiTipo: 'otro', label: 'Otro equipo', icon: HardDrive },
+  { value: 'celular', label: 'Celular', icon: Smartphone },
+  { value: 'tablet', label: 'Tablet', icon: Tablet },
+  { value: 'laptop', label: 'Laptop', icon: Laptop },
+  { value: 'impresora', label: 'Impresora', icon: Printer },
+  { value: 'pc_escritorio', label: 'PC de escritorio', icon: Monitor },
+  { value: 'otro', label: 'Otro equipo', icon: HardDrive },
 ];
 
 const PLACEHOLDERS_EQUIPO = {
   celular: { marca: 'Ej. Samsung, Apple', modelo: 'Ej. Galaxy A54 5G' },
   tablet: { marca: 'Ej. Apple, Samsung', modelo: 'Ej. iPad Air 5' },
   laptop: { marca: 'Ej. HP, Dell, Apple', modelo: 'Ej. Pavilion 15' },
-  impresora: { marca: 'Ej. Epson, HP, Canon', modelo: 'Ej. EcoTank L3250' },
+  impresora: { marca: 'Ej. Epson, HP, Canon', modelo: 'Ej. EcoTank L3110' },
   pc_escritorio: { marca: 'Ej. Dell, HP, Ensamblada', modelo: 'Ej. OptiPlex 7090' },
   otro: { marca: 'Ej. Sony, Nintendo', modelo: 'Ej. Consola o equipo' },
 };
 
+const ACCESORIOS_PREDEFINIDOS = [
+  'Cargador / Adaptador',
+  'Cable de corriente',
+  'Funda / Maletín',
+  'Tarjeta SIM',
+  'Memoria SD / USB',
+  'Ninguno',
+];
+
 /**
- * Pantalla de recepción y alta de nueva orden de reparación (RF-02 a RF-05, RF-07).
+ * Extrae el ID numérico de una orden recién creada sin importar cómo venga anidada la respuesta.
  *
- * @returns {JSX.Element} Formulario de captura de cliente, dispositivo y estado inicial.
+ * @param {Object|null|undefined} res Respuesta JSON del endpoint POST /api/ordenes.
+ * @returns {number|string|null} Identificador de la orden o null si no se encuentra.
+ */
+function extraerIdOrdenCreada(res) {
+  if (!res) return null;
+  return (
+    res?.orden?.id ??
+    res?.id ??
+    res?.data?.orden?.id ??
+    res?.data?.id ??
+    null
+  );
+}
+
+/**
+ * Pantalla de alta de nueva orden de reparación con prevención de clientes y equipos duplicados.
+ *
+ * @returns {JSX.Element} Formulario de recepción en dos columnas con resumen reactivo.
  */
 export default function NuevaOrdenPage() {
   const { user } = useAuth();
@@ -57,26 +86,32 @@ export default function NuevaOrdenPage() {
   const dropdownRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    // Cliente
     nombre_cliente: '',
     telefono_cliente: '',
     email_cliente: '',
-
-    // Dispositivo
     tipo_dispositivo: 'celular',
     marca: '',
     modelo: '',
     color: '',
     imei_o_serie: '',
     contrasena_equipo: '',
-
-    // Orden de Reparación
     falla_reportada: '',
     condicion_fisica: '',
     accesorios: [],
   });
 
+  // Búsqueda y reutilización de cliente existente
+  const [busquedaCliente, setBusquedaCliente] = useState('');
+  const [sugerenciasClientes, setSugerenciasClientes] = useState([]);
   const [clienteExistente, setClienteExistente] = useState(null);
+  const [editandoTelCliente, setEditandoTelCliente] = useState(false);
+  const [nuevoTelCliente, setNuevoTelCliente] = useState('');
+  const [actualizandoTel, setActualizandoTel] = useState(false);
+
+  // Equipos previos del cliente y detección por IMEI/SN
+  const [equiposCliente, setEquiposCliente] = useState([]);
+  const [dispositivoExistente, setDispositivoExistente] = useState(null);
+
   const [folioEstimado, setFolioEstimado] = useState('RP-2026-0001');
   const [fotos, setFotos] = useState([]);
   const [otroAccesorio, setOtroAccesorio] = useState('');
@@ -85,15 +120,6 @@ export default function NuevaOrdenPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const accesoriosPredefinidos = [
-    'Funda',
-    'Tarjeta SIM',
-    'Cargador',
-    'Memoria SD',
-    'Ninguno',
-  ];
-
-  // Cerrar menú desplegable al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -104,7 +130,7 @@ export default function NuevaOrdenPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Calcular siguiente folio autoincremental real consultando la base de datos
+  // Calcular folio estimado
   useEffect(() => {
     apiRequest('/api/ordenes?por_pagina=1')
       .then((data) => {
@@ -112,8 +138,7 @@ export default function NuevaOrdenPage() {
         let siguienteNum = 1;
         const ultimaOrden = data.ordenes?.[0];
         if (ultimaOrden?.folio) {
-          const partes = ultimaOrden.folio.split('-');
-          const num = parseInt(partes[2], 10);
+          const num = parseInt(ultimaOrden.folio.split('-')[2], 10);
           if (!isNaN(num)) siguienteNum = num + 1;
         } else if (data.resumen?.total || data.total) {
           siguienteNum = (data.resumen?.total || data.total) + 1;
@@ -121,54 +146,171 @@ export default function NuevaOrdenPage() {
         setFolioEstimado(`RP-${anio}-${String(siguienteNum).padStart(4, '0')}`);
       })
       .catch(() => {
-        const anio = new Date().getFullYear();
-        setFolioEstimado(`RP-${anio}-0001`);
+        setFolioEstimado(`RP-${new Date().getFullYear()}-0001`);
       });
   }, []);
 
-  // Búsqueda automática de cliente existente al completar 10 dígitos en el teléfono
+  // Buscador de clientes por nombre, teléfono o correo (evita duplicados)
   useEffect(() => {
-    const tel = formData.telefono_cliente.trim();
-    if (tel.length === 10 && !isNaN(tel)) {
+    const q = busquedaCliente.trim();
+    if (q.length < 2 || clienteExistente) {
+      setSugerenciasClientes([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      apiRequest(`/api/clientes?q=${encodeURIComponent(q)}`)
+        .then((data) => setSugerenciasClientes((data.clientes || []).slice(0, 5)))
+        .catch(() => setSugerenciasClientes([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [busquedaCliente, clienteExistente]);
+
+  // Búsqueda automática por teléfono exacto de 10 dígitos si no se seleccionó del buscador
+  useEffect(() => {
+    if (clienteExistente) return;
+    const tel = formData.telefono_cliente.replace(/\D/g, '');
+    if (tel.length === 10) {
       apiRequest(`/api/clientes?telefono=${tel}`)
         .then((data) => {
-          if (data.cliente) {
-            setClienteExistente(data.cliente);
-            setFormData((prev) => ({
-              ...prev,
-              nombre_cliente: prev.nombre_cliente || data.cliente.nombre_completo,
-              email_cliente: prev.email_cliente || data.cliente.email || '',
-            }));
-          }
+          if (data.cliente) seleccionarClienteExistente(data.cliente);
         })
-        .catch(() => {
-          setClienteExistente(null);
-        });
-    } else {
-      setClienteExistente(null);
+        .catch(() => {});
     }
   }, [formData.telefono_cliente]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  // Detección automática de equipo recurrente por IMEI o S/N
+  useEffect(() => {
+    const serie = formData.imei_o_serie.trim();
+    const validoParaBuscar =
+      formData.tipo_dispositivo === 'celular' ? serie.length === 15 : serie.length >= 4;
+
+    if (!validoParaBuscar) {
+      setDispositivoExistente(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      apiRequest(`/api/dispositivos?imei_o_serie=${encodeURIComponent(serie)}`)
+        .then((data) => {
+          if (data.dispositivo) {
+            setDispositivoExistente(data.dispositivo);
+            setFormData((prev) => ({
+              ...prev,
+              tipo_dispositivo: data.dispositivo.tipo || prev.tipo_dispositivo,
+              marca: data.dispositivo.marca || prev.marca,
+              modelo: data.dispositivo.modelo || prev.modelo,
+              color: data.dispositivo.color || prev.color,
+            }));
+          }
+        })
+        .catch(() => setDispositivoExistente(null));
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [formData.imei_o_serie, formData.tipo_dispositivo]);
+
+  /**
+   * Selecciona un cliente existente y carga sus dispositivos registrados para reutilizarlos en un clic.
+   *
+   * @param {Object} cli Objeto cliente seleccionado.
+   * @returns {Promise<void>}
+   */
+  const seleccionarClienteExistente = async (cli) => {
+    setClienteExistente(cli);
+    setSugerenciasClientes([]);
+    setBusquedaCliente('');
+    setEditandoTelCliente(false);
+    setNuevoTelCliente(cli.telefono || '');
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      nombre_cliente: cli.nombre_completo || '',
+      telefono_cliente: cli.telefono || '',
+      email_cliente: cli.email || '',
+    }));
+
+    try {
+      const ficha = await apiRequest(`/api/clientes/${cli.id}`);
+      setEquiposCliente(ficha.dispositivos || []);
+    } catch {
+      setEquiposCliente([]);
+    }
+  };
+
+  /**
+   * Desvincula al cliente seleccionado para registrar un cliente nuevo (p. ej. homónimo).
+   *
+   * @returns {void}
+   */
+  const limpiarClienteSeleccionado = () => {
+    setClienteExistente(null);
+    setEquiposCliente([]);
+    setEditandoTelCliente(false);
+    setDispositivoExistente(null);
+    setFormData((prev) => ({
+      ...prev,
+      nombre_cliente: '',
+      telefono_cliente: '',
+      email_cliente: '',
+    }));
+  };
+
+  /**
+   * Actualiza el teléfono de un cliente recurrente en la BD conservando su historial (RF-02).
+   *
+   * @returns {Promise<void>}
+   */
+  const handleActualizarTelefonoCliente = async () => {
+    if (!clienteExistente?.id) return;
+    const telLimpio = nuevoTelCliente.replace(/\D/g, '');
+    if (telLimpio.length !== 10) {
+      setError('El nuevo teléfono debe contener exactamente 10 dígitos.');
+      return;
+    }
+
+    try {
+      setActualizandoTel(true);
+      setError(null);
+      const res = await apiRequest(`/api/clientes/${clienteExistente.id}`, {
+        method: 'PATCH',
+        body: { telefono: telLimpio },
+      });
+      setClienteExistente(res.cliente);
+      setFormData((prev) => ({ ...prev, telefono_cliente: res.cliente.telefono }));
+      setEditandoTelCliente(false);
+    } catch (err) {
+      setError(err.message || 'No se pudo actualizar el teléfono del cliente.');
+    } finally {
+      setActualizandoTel(false);
+    }
+  };
+
+  /**
+   * Rellena la sección de dispositivo con un equipo previo del cliente seleccionado.
+   *
+   * @param {Object} eq Dispositivo registrado previamente.
+   * @returns {void}
+   */
+  const seleccionarEquipoPrevio = (eq) => {
+    setDispositivoExistente(eq);
+    setFormData((prev) => ({
+      ...prev,
+      tipo_dispositivo: eq.tipo || 'otro',
+      marca: eq.marca || '',
+      modelo: eq.modelo || '',
+      color: eq.color || '',
+      imei_o_serie: eq.imei_o_serie || '',
     }));
     setError(null);
   };
 
-  /**
-   * Actualiza el tipo de dispositivo seleccionado en el desplegable.
-   *
-   * @param {string} tipo Valor visual del tipo de equipo.
-   * @returns {void}
-   */
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError(null);
+  };
+
   const seleccionarTipoDispositivo = (tipo) => {
-    setFormData((prev) => ({
-      ...prev,
-      tipo_dispositivo: tipo,
-    }));
+    setFormData((prev) => ({ ...prev, tipo_dispositivo: tipo }));
     setDropdownAbierto(false);
     setError(null);
   };
@@ -177,17 +319,14 @@ export default function NuevaOrdenPage() {
     setError(null);
     setFormData((prev) => {
       if (acc === 'Ninguno') {
-        const yaTieneNinguno = prev.accesorios.includes('Ninguno');
-        return {
-          ...prev,
-          accesorios: yaTieneNinguno ? [] : ['Ninguno'],
-        };
+        return { ...prev, accesorios: prev.accesorios.includes('Ninguno') ? [] : ['Ninguno'] };
       }
-
       const sinNinguno = prev.accesorios.filter((a) => a !== 'Ninguno');
       const existe = sinNinguno.includes(acc);
-      const nuevos = existe ? sinNinguno.filter((a) => a !== acc) : [...sinNinguno, acc];
-      return { ...prev, accesorios: nuevos };
+      return {
+        ...prev,
+        accesorios: existe ? sinNinguno.filter((a) => a !== acc) : [...sinNinguno, acc],
+      };
     });
   };
 
@@ -204,7 +343,7 @@ export default function NuevaOrdenPage() {
   };
 
   /**
-   * Valida formato (JPG/PNG), tamaño (<= 5 MB) y cantidad (máx. 5) de las fotos de recepción (RF-05, RF-07).
+   * Valida formato (JPG/PNG), tamaño (<= 5 MB) y límite (5 fotos) de las evidencias iniciales (RF-05, RF-07).
    *
    * @param {React.ChangeEvent<HTMLInputElement>} e Evento de selección de archivos.
    * @returns {void}
@@ -215,7 +354,7 @@ export default function NuevaOrdenPage() {
     if (!files.length) return;
 
     const formatosPermitidos = ['image/jpeg', 'image/png', 'image/jpg'];
-    const maxBytes = 5 * 1024 * 1024; // 5 MB
+    const maxBytes = 5 * 1024 * 1024;
 
     for (const f of files) {
       if (!formatosPermitidos.includes(f.type) && !/\.(jpg|jpeg|png)$/i.test(f.name)) {
@@ -253,10 +392,11 @@ export default function NuevaOrdenPage() {
     });
   };
 
-  // Estados de validación
+  // Validaciones reactivas
   const esCelular = formData.tipo_dispositivo === 'celular';
   const nombreLleno = formData.nombre_cliente.trim().length > 0;
-  const telefonoValido = formData.telefono_cliente.trim().length === 10 && !isNaN(formData.telefono_cliente.trim());
+  const telefonoLimpio = formData.telefono_cliente.replace(/\D/g, '');
+  const telefonoValido = telefonoLimpio.length === 10;
   const datosClienteCompletos = nombreLleno && telefonoValido;
 
   const imeiLleno = formData.imei_o_serie.trim().length > 0;
@@ -272,7 +412,6 @@ export default function NuevaOrdenPage() {
   const fotosValidas = fotos.length >= 1;
 
   const nombreRecibe = user?.nombre || user?.email || '—';
-
   const formularioListo =
     datosClienteCompletos &&
     imeiValido &&
@@ -283,12 +422,13 @@ export default function NuevaOrdenPage() {
     accesoriosValidos &&
     fotosValidas;
 
-  const tipoActual = TIPOS_DISPOSITIVO.find((t) => t.value === formData.tipo_dispositivo) || TIPOS_DISPOSITIVO[0];
+  const tipoActual =
+    TIPOS_DISPOSITIVO.find((t) => t.value === formData.tipo_dispositivo) || TIPOS_DISPOSITIVO[0];
   const IconoTipoActual = tipoActual.icon;
   const placeholders = PLACEHOLDERS_EQUIPO[formData.tipo_dispositivo] || PLACEHOLDERS_EQUIPO.otro;
 
   /**
-   * Registra cliente, dispositivo (mapeando tipos visuales al catálogo del backend) y orden con fotos.
+   * Crea o reutiliza cliente y dispositivo, registra la orden y abre la nota de servicio imprimible (P12).
    *
    * @param {React.FormEvent<HTMLFormElement>} e Evento de envío del formulario.
    * @returns {Promise<void>}
@@ -298,48 +438,23 @@ export default function NuevaOrdenPage() {
     setLoading(true);
     setError(null);
 
-    if (!datosClienteCompletos) {
-      setError('Por favor ingresa el nombre del cliente y un teléfono válido de 10 dígitos.');
-      setLoading(false);
-      return;
-    }
-
-    if (!marcaLlena || !modeloLleno) {
-      setError('Por favor completa la marca y el modelo del dispositivo.');
-      setLoading(false);
-      return;
-    }
-
-    if (!imeiValido) {
-      setError(
-        esCelular
-          ? 'El IMEI del celular debe contener exactamente 15 dígitos numéricos.'
-          : 'El número de serie (S/N) debe tener entre 4 y 30 caracteres.',
-      );
-      setLoading(false);
-      return;
-    }
-
-    if (!fallaValida || !condicionValida) {
-      setError('Por favor describe la falla reportada y la condición física del equipo.');
-      setLoading(false);
-      return;
-    }
-
-    if (!accesoriosValidos) {
-      setError('Debes seleccionar al menos un accesorio recibido o marcar la opción "Ninguno".');
-      setLoading(false);
-      return;
-    }
-
-    if (!fotosValidas) {
-      setError('Debes adjuntar al menos una fotografía de recepción del equipo (mínimo 1, máximo 5).');
+    if (
+      !datosClienteCompletos ||
+      !marcaLlena ||
+      !modeloLleno ||
+      !imeiValido ||
+      !fallaValida ||
+      !condicionValida ||
+      !accesoriosValidos ||
+      !fotosValidas
+    ) {
+      setError('Por favor completa todos los campos obligatorios y adjunta al menos 1 fotografía.');
       setLoading(false);
       return;
     }
 
     try {
-      // 1. Resolver Cliente (crear o reutilizar)
+      // 1. Resolver Cliente
       let clienteId = clienteExistente?.id;
       if (!clienteId) {
         try {
@@ -347,7 +462,7 @@ export default function NuevaOrdenPage() {
             method: 'POST',
             body: {
               nombre_completo: formData.nombre_cliente.trim(),
-              telefono: formData.telefono_cliente.trim(),
+              telefono: telefonoLimpio,
               email: formData.email_cliente.trim() || undefined,
               aviso_privacidad: true,
             },
@@ -362,27 +477,29 @@ export default function NuevaOrdenPage() {
         }
       }
 
-      // 2. Resolver Dispositivo (impresora y pc_escritorio se guardan como "otro" para respetar el esquema SQL)
-      let dispositivoId;
-      try {
-        const resDisp = await apiRequest('/api/dispositivos', {
-          method: 'POST',
-          body: {
-            cliente_id: clienteId,
-            tipo: tipoActual.apiTipo,
-            marca: formData.marca.trim(),
-            modelo: formData.modelo.trim(),
-            color: formData.color.trim() || undefined,
-            imei_o_serie: formData.imei_o_serie.trim(),
-            contrasena_equipo: formData.contrasena_equipo.trim() || undefined,
-          },
-        });
-        dispositivoId = resDisp.dispositivo.id;
-      } catch (err) {
-        if (err.data?.dispositivo?.id) {
-          dispositivoId = err.data.dispositivo.id;
-        } else {
-          throw err;
+      // 2. Resolver Dispositivo (reutiliza si ya existe por IMEI/SN)
+      let dispositivoId = dispositivoExistente?.id;
+      if (!dispositivoId) {
+        try {
+          const resDisp = await apiRequest('/api/dispositivos', {
+            method: 'POST',
+            body: {
+              cliente_id: clienteId,
+              tipo: formData.tipo_dispositivo,
+              marca: formData.marca.trim(),
+              modelo: formData.modelo.trim(),
+              color: formData.color.trim() || undefined,
+              imei_o_serie: formData.imei_o_serie.trim(),
+              contrasena_equipo: formData.contrasena_equipo.trim() || undefined,
+            },
+          });
+          dispositivoId = resDisp.dispositivo.id;
+        } catch (err) {
+          if (err.data?.dispositivo?.id) {
+            dispositivoId = err.data.dispositivo.id;
+          } else {
+            throw err;
+          }
         }
       }
 
@@ -392,18 +509,30 @@ export default function NuevaOrdenPage() {
       orderData.append('falla_reportada', formData.falla_reportada.trim());
       orderData.append('condicion_fisica', formData.condicion_fisica.trim());
       orderData.append('accesorios', JSON.stringify(formData.accesorios));
+      fotos.forEach((f) => orderData.append('fotos', f.file));
 
-      fotos.forEach((f) => {
-        orderData.append('fotos', f.file);
-      });
-
-      await apiRequest('/api/ordenes', {
+      const resOrden = await apiRequest('/api/ordenes', {
         method: 'POST',
         body: orderData,
         isFormData: true,
       });
 
-      navigate('/dashboard');
+      const ordenCreadaId = extraerIdOrdenCreada(resOrden);
+      if (ordenCreadaId) {
+        navigate(`/ordenes/${ordenCreadaId}/nota`);
+      } else {
+        const folioGenerado = resOrden?.orden?.folio || resOrden?.folio;
+        if (folioGenerado) {
+          const lista = await apiRequest(`/api/ordenes?q=${encodeURIComponent(folioGenerado)}`);
+          const encontrada =
+            lista?.ordenes?.find((o) => o.folio === folioGenerado) || lista?.ordenes?.[0];
+          if (encontrada?.id) {
+            navigate(`/ordenes/${encontrada.id}/nota`);
+            return;
+          }
+        }
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Ocurrió un error al registrar la orden en el sistema.');
     } finally {
@@ -413,7 +542,7 @@ export default function NuevaOrdenPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0B0D12] flex flex-col font-sans pb-16">
-      {/* ================= BARRA SUPERIOR Y NAVEGACIÓN ================= */}
+      {/* Barra superior */}
       <header className="bg-white border-b border-slate-200 px-6 py-3.5 sticky top-0 z-30 flex items-center justify-between shadow-sm">
         <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium">
           <Link to="/dashboard" className="hover:text-[#24529F] transition-colors">
@@ -422,26 +551,16 @@ export default function NuevaOrdenPage() {
           <span className="text-slate-300">/</span>
           <span className="text-slate-800 font-semibold">Nueva orden</span>
         </nav>
-
-        <div className="relative hidden md:block w-72 lg:w-80">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            readOnly
-            placeholder="Buscar por folio, cliente, teléfono o IMEI"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-600 focus:outline-none"
-          />
-        </div>
       </header>
 
-      {/* ================= ENCABEZADO DE PÁGINA ================= */}
+      {/* Encabezado */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#0B0D12] tracking-tight">
             Nueva orden de reparación
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Captura cliente, equipo y estado inicial. El folio se genera al guardar.
+            Busca un cliente recurrente o registra uno nuevo. Al guardar se abrirá la nota imprimible con QR.
           </p>
         </div>
         <Link
@@ -452,10 +571,10 @@ export default function NuevaOrdenPage() {
         </Link>
       </div>
 
-      {/* ================= CONTENIDO PRINCIPAL EN 2 COLUMNAS ================= */}
+      {/* Contenido en 2 columnas */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
         {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-xs animate-in fade-in">
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-xs">
             <AlertCircle className="w-5 h-5 shrink-0 text-rose-500 mt-0.5" />
             <div>
               <span className="font-bold block mb-0.5">Verifica la información</span>
@@ -466,7 +585,7 @@ export default function NuevaOrdenPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* ================= COLUMNA IZQUIERDA: FORMULARIO (8 cols) ================= */}
+            {/* COLUMNA IZQUIERDA (8 cols) */}
             <div className="lg:col-span-8 space-y-6">
               {/* CARD 1: CLIENTE */}
               <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
@@ -485,24 +604,111 @@ export default function NuevaOrdenPage() {
                   </div>
 
                   {clienteExistente && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-[#24529F] border border-blue-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#24529F]" />
-                      Cliente existente
-                    </span>
+                    <button
+                      type="button"
+                      onClick={limpiarClienteSeleccionado}
+                      className="text-xs font-semibold text-[#24529F] hover:underline cursor-pointer"
+                    >
+                      Cambiar / Registrar cliente nuevo
+                    </button>
                   )}
                 </div>
 
-                {clienteExistente && (
-                  <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl p-3.5 flex items-start gap-3 animate-in fade-in">
-                    <Users className="w-4 h-4 text-[#1E3A8A] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-[#1E3A8A]">
-                        Encontramos a este cliente por su teléfono
-                      </p>
-                      <p className="text-[11px] text-[#2563EB] mt-0.5">
-                        {clienteExistente.nombre_completo} · {clienteExistente.num_ordenes || 1} órdenes anteriores. Sus datos se reutilizan.
-                      </p>
+                {/* Buscador rápido de cliente existente */}
+                {!clienteExistente && (
+                  <div className="relative">
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+                      ¿Ya ha venido antes? Búscalo por nombre, teléfono o correo
+                    </label>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-2.5" />
+                      <input
+                        type="text"
+                        value={busquedaCliente}
+                        onChange={(e) => setBusquedaCliente(e.target.value)}
+                        placeholder="Ej. Adair Hernandez o 3312345678..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-[#24529F]"
+                      />
                     </div>
+                    {sugerenciasClientes.length > 0 && (
+                      <div className="mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100 overflow-hidden">
+                        {sugerenciasClientes.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => seleccionarClienteExistente(c)}
+                            className="w-full px-3.5 py-2.5 text-left hover:bg-blue-50 flex items-center justify-between gap-2 text-xs transition-colors cursor-pointer"
+                          >
+                            <div>
+                              <p className="font-semibold text-slate-900">{c.nombre_completo}</p>
+                              <p className="text-[11px] text-slate-500 font-mono">
+                                {c.telefono} {c.email ? `· ${c.email}` : ''}
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-[#24529F] border border-blue-200 shrink-0">
+                              Seleccionar
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Banner de cliente existente con opción de actualizar teléfono */}
+                {clienteExistente && (
+                  <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl p-3.5 space-y-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2.5">
+                        <Users className="w-4 h-4 text-[#1E3A8A] shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-[#1E3A8A]">
+                            Cliente recurrente vinculado: {clienteExistente.nombre_completo}
+                          </p>
+                          <p className="text-[11px] text-[#2563EB] mt-0.5">
+                            Esta orden se sumará a su historial existente sin duplicar su registro.
+                          </p>
+                        </div>
+                      </div>
+                      {!editandoTelCliente && (
+                        <button
+                          type="button"
+                          onClick={() => setEditandoTelCliente(true)}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1E3A8A] hover:underline shrink-0 cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          ¿Cambió de teléfono?
+                        </button>
+                      )}
+                    </div>
+
+                    {editandoTelCliente && (
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-blue-200/80">
+                        <input
+                          type="tel"
+                          maxLength={10}
+                          value={nuevoTelCliente}
+                          onChange={(e) => setNuevoTelCliente(e.target.value)}
+                          placeholder="Nuevo teléfono (10 dígitos)"
+                          className="bg-white border border-blue-300 rounded-lg px-3 py-1.5 text-xs font-mono w-48 focus:outline-none focus:border-[#24529F]"
+                        />
+                        <button
+                          type="button"
+                          disabled={actualizandoTel}
+                          onClick={handleActualizarTelefonoCliente}
+                          className="px-3 py-1.5 rounded-lg bg-[#0D1B3E] text-white text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                        >
+                          {actualizandoTel ? 'Guardando...' : 'Actualizar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditandoTelCliente(false)}
+                          className="px-2 py-1.5 text-xs text-slate-600 hover:text-slate-900 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -515,10 +721,11 @@ export default function NuevaOrdenPage() {
                       type="text"
                       name="nombre_cliente"
                       required
+                      disabled={Boolean(clienteExistente)}
                       value={formData.nombre_cliente}
                       onChange={handleChange}
                       placeholder="Ej. Carlos Mendoza"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] focus:ring-1 focus:ring-[#24529F] transition-all"
+                      className="w-full bg-white disabled:bg-slate-50 disabled:text-slate-500 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F]"
                     />
                   </div>
 
@@ -531,15 +738,14 @@ export default function NuevaOrdenPage() {
                       name="telefono_cliente"
                       required
                       maxLength={10}
+                      disabled={Boolean(clienteExistente)}
                       value={formData.telefono_cliente}
                       onChange={handleChange}
-                      placeholder="Ej. 33 1234 5678"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#24529F] focus:ring-1 focus:ring-[#24529F] transition-all"
+                      placeholder="Ej. 3312345678"
+                      className="w-full bg-white disabled:bg-slate-50 disabled:text-slate-500 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#24529F]"
                     />
                     {telefonoValido && (
-                      <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-1">
-                        ✓ 10 dígitos
-                      </p>
+                      <p className="text-[11px] text-emerald-600 font-medium mt-1">✓ 10 dígitos</p>
                     )}
                   </div>
 
@@ -550,10 +756,11 @@ export default function NuevaOrdenPage() {
                     <input
                       type="email"
                       name="email_cliente"
+                      disabled={Boolean(clienteExistente)}
                       value={formData.email_cliente}
                       onChange={handleChange}
                       placeholder="Ej. cliente@correo.com"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] focus:ring-1 focus:ring-[#24529F] transition-all"
+                      className="w-full bg-white disabled:bg-slate-50 disabled:text-slate-500 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F]"
                     />
                   </div>
                 </div>
@@ -561,15 +768,77 @@ export default function NuevaOrdenPage() {
 
               {/* CARD 2: DISPOSITIVO */}
               <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                  <div className="w-6 h-6 rounded-full bg-[#0D1B3E] text-white flex items-center justify-center text-xs font-bold font-mono shrink-0">
-                    2
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-full bg-[#0D1B3E] text-white flex items-center justify-center text-xs font-bold font-mono shrink-0">
+                      2
+                    </div>
+                    <h2 className="font-bold text-base text-[#0B0D12]">Dispositivo</h2>
                   </div>
-                  <h2 className="font-bold text-base text-[#0B0D12]">Dispositivo</h2>
+                  {dispositivoExistente && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDispositivoExistente(null);
+                        setFormData((prev) => ({
+                          ...prev,
+                          marca: '',
+                          modelo: '',
+                          imei_o_serie: '',
+                          color: '',
+                        }));
+                      }}
+                      className="text-xs font-semibold text-[#24529F] hover:underline cursor-pointer"
+                    >
+                      Registrar otro equipo
+                    </button>
+                  )}
                 </div>
 
+                {/* Equipos previos del cliente seleccionado */}
+                {equiposCliente.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-slate-500">
+                      Equipos registrados de este cliente (clic para reutilizar y acumular historial):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {equiposCliente.map((eq) => {
+                        const seleccionado = dispositivoExistente?.id === eq.id;
+                        return (
+                          <button
+                            key={eq.id}
+                            type="button"
+                            onClick={() => seleccionarEquipoPrevio(eq)}
+                            className={`px-3 py-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                              seleccionado
+                                ? 'bg-blue-50 border-[#24529F] text-[#0D1B3E]'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <span className="font-semibold block">
+                              {eq.marca} {eq.modelo}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500">
+                              {eq.imei_o_serie}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {dispositivoExistente && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2.5 text-xs text-emerald-800">
+                    <History className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      Equipo reconocido por su {esCelular ? 'IMEI' : 'S/N'}. Esta orden se agregará a su historial técnico (RF-15).
+                    </span>
+                  </div>
+                )}
+
                 <div className="space-y-4">
-                  {/* Menú desplegable de Tipo de Dispositivo */}
+                  {/* Desplegable de Tipo de Dispositivo */}
                   <div className="relative" ref={dropdownRef}>
                     <label className="block text-xs font-medium text-slate-700 mb-1.5">
                       Tipo de dispositivo *
@@ -591,7 +860,7 @@ export default function NuevaOrdenPage() {
                     </button>
 
                     {dropdownAbierto && (
-                      <div className="absolute top-full left-0 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1.5 animate-in fade-in zoom-in-95">
+                      <div className="absolute top-full left-0 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1.5">
                         {TIPOS_DISPOSITIVO.map((t) => {
                           const Icono = t.icon;
                           const seleccionado = t.value === formData.tipo_dispositivo;
@@ -630,7 +899,7 @@ export default function NuevaOrdenPage() {
                         value={formData.marca}
                         onChange={handleChange}
                         placeholder={placeholders.marca}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] transition-all"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F]"
                       />
                     </div>
 
@@ -645,7 +914,7 @@ export default function NuevaOrdenPage() {
                         value={formData.modelo}
                         onChange={handleChange}
                         placeholder={placeholders.modelo}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] transition-all"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F]"
                       />
                     </div>
 
@@ -659,7 +928,7 @@ export default function NuevaOrdenPage() {
                         value={formData.contrasena_equipo}
                         onChange={handleChange}
                         placeholder="Ej. 1234 o patrón"
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] transition-all"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F]"
                       />
                     </div>
                   </div>
@@ -688,7 +957,6 @@ export default function NuevaOrdenPage() {
                         </span>
                       )}
                     </div>
-
                     {imeiLleno && !imeiValido && (
                       <p className="text-[11px] text-rose-600 mt-1">
                         {esCelular
@@ -709,8 +977,8 @@ export default function NuevaOrdenPage() {
                     </div>
                     <h2 className="font-bold text-base text-[#0B0D12]">Estado inicial</h2>
                   </div>
-                  <span className="text-xs text-slate-400 font-normal">
-                    Esta opción no se podrá modificar tras recibir
+                  <span className="text-xs text-slate-400">
+                    Esta información queda asentada en la nota de recepción
                   </span>
                 </div>
 
@@ -725,8 +993,8 @@ export default function NuevaOrdenPage() {
                       rows={3}
                       value={formData.falla_reportada}
                       onChange={handleChange}
-                      placeholder="Ej. La pantalla se quedó en negro después de una caída; vibra y suena al recibir llamadas."
-                      className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] transition-all resize-none"
+                      placeholder="Ej. No enciende o no detecta cartuchos de tinta..."
+                      className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] resize-none"
                     />
                   </div>
 
@@ -740,8 +1008,8 @@ export default function NuevaOrdenPage() {
                       rows={3}
                       value={formData.condicion_fisica}
                       onChange={handleChange}
-                      placeholder="Ej. Cristal estrellado en la esquina inferior derecha. Marco con rayones leves. Tapa trasera sin daños."
-                      className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] transition-all resize-none"
+                      placeholder="Ej. Carcasa con rayones leves de uso; pantalla sin grietas."
+                      className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-[#24529F] resize-none"
                     />
                   </div>
                 </div>
@@ -760,7 +1028,7 @@ export default function NuevaOrdenPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {accesoriosPredefinidos.map((acc) => {
+                    {ACCESORIOS_PREDEFINIDOS.map((acc) => {
                       const activo = formData.accesorios.includes(acc);
                       return (
                         <button
@@ -786,7 +1054,7 @@ export default function NuevaOrdenPage() {
                     })}
 
                     {formData.accesorios
-                      .filter((a) => !accesoriosPredefinidos.includes(a))
+                      .filter((a) => !ACCESORIOS_PREDEFINIDOS.includes(a))
                       .map((cust) => (
                         <span
                           key={cust}
@@ -811,7 +1079,7 @@ export default function NuevaOrdenPage() {
                           value={otroAccesorio}
                           onChange={(e) => setOtroAccesorio(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAgregarOtroAccesorio())}
-                          placeholder="Ej. Mochila, Stylus..."
+                          placeholder="Ej. Cable USB, Mouse..."
                           autoFocus
                           className="px-2.5 py-1 text-xs border border-slate-200 rounded-xl w-36 focus:outline-none focus:border-[#24529F]"
                         />
@@ -845,11 +1113,10 @@ export default function NuevaOrdenPage() {
 
                 {/* Fotografías de recepción */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-slate-700">
-                      Fotografías de recepción * <span className="text-slate-400 font-normal">· mínimo 1, máximo 5 · JPG o PNG hasta 5 MB</span>
-                    </label>
-                  </div>
+                  <label className="block text-xs font-medium text-slate-700 mb-2">
+                    Fotografías de recepción *{' '}
+                    <span className="text-slate-400 font-normal">· mínimo 1, máximo 5 · JPG o PNG hasta 5 MB</span>
+                  </label>
 
                   <input
                     type="file"
@@ -880,7 +1147,7 @@ export default function NuevaOrdenPage() {
                     {fotos.map((foto) => (
                       <div
                         key={foto.id}
-                        className="w-36 h-36 rounded-2xl overflow-hidden relative border border-slate-200 bg-slate-100 group shrink-0 shadow-sm"
+                        className="w-36 h-36 rounded-2xl overflow-hidden relative border border-slate-200 bg-slate-100 shrink-0 shadow-sm"
                       >
                         <img
                           src={foto.previewUrl}
@@ -909,7 +1176,7 @@ export default function NuevaOrdenPage() {
               </section>
             </div>
 
-            {/* ================= COLUMNA DERECHA: RESUMEN STICKY (4 cols) ================= */}
+            {/* COLUMNA DERECHA: RESUMEN (4 cols) */}
             <div className="lg:col-span-4 sticky top-20 space-y-4">
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
                 <h3 className="font-bold text-base text-[#0B0D12]">Resumen</h3>
@@ -937,7 +1204,6 @@ export default function NuevaOrdenPage() {
                       {formData.nombre_cliente.trim() || '—'}
                     </span>
                   </div>
-
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Equipo</span>
                     <span className="font-medium text-slate-900 truncate max-w-[180px] text-right">
@@ -946,21 +1212,18 @@ export default function NuevaOrdenPage() {
                         : '—'}
                     </span>
                   </div>
-
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Accesorios</span>
                     <span className="font-medium text-slate-900 truncate max-w-[180px] text-right">
                       {formData.accesorios.length > 0 ? formData.accesorios.join(', ') : '—'}
                     </span>
                   </div>
-
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Fotos</span>
                     <span className="font-medium text-slate-900">
-                      {fotos.length > 0 ? `${fotos.length} de recepción` : '0 de recepción'}
+                      {fotos.length} de recepción
                     </span>
                   </div>
-
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Recibe</span>
                     <span className="font-medium text-slate-900 truncate max-w-[180px] text-right">
@@ -969,7 +1232,7 @@ export default function NuevaOrdenPage() {
                   </div>
                 </div>
 
-                {/* Checklist de validación reactiva */}
+                {/* Checklist reactivo */}
                 <div className="space-y-1.5 text-xs">
                   {datosClienteCompletos ? (
                     <div className="text-emerald-600 font-medium flex items-center gap-1.5">
@@ -1026,7 +1289,7 @@ export default function NuevaOrdenPage() {
                       : 'bg-slate-300 text-white cursor-not-allowed'
                   }`}
                 >
-                  {loading ? 'Creando orden...' : 'Crear orden'}
+                  {loading ? 'Creando orden...' : 'Crear orden y generar nota QR'}
                 </button>
               </div>
             </div>
