@@ -23,7 +23,7 @@ Al correr `npm run seed` con el `.env` de ejemplo se crea esta cuenta:
 - **URL:** `http://localhost:5173/login`
 - **Correo:** `tecnico@infofix.test`
 - **Contraseña:** `Tecnico123!`
-- **Código del taller (para registrar nuevas cuentas):** `CAMBIA-ESTE-CODIGO`
+- **Código del taller (para registrar nuevas cuentas):** `PRUEBA`
 
 *(Los correos de recuperación y avisos se imprimen en la consola del backend mientras `SMTP_HOST` esté vacío en `backend/.env`).*
 
