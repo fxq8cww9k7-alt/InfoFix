@@ -1,13 +1,6 @@
-# Guía rápida — InfoFIX (`main`)
+# Guía rápida — InfoFIX
 
-## 1. Cuenta de prueba
-
-- **URL:** `http://localhost:5173/login`
-- **Correo:** `admin@infofix.test`
-- **Contraseña:** `Admin123!`
-- **Código del taller (si quieres registrar otra cuenta):** `CAMBIA-ESTE-CODIGO` (configurable en `backend/.env` como `CODIGO_TALLER`)
-
-## 2. Levantar el proyecto en local
+## 1. Levantar el proyecto en local
 
 ```bash
 # Backend (puerto 3000)
@@ -23,22 +16,25 @@ npm install
 npm run dev
 ```
 
-## 3. Cómo hacer push
+## 2. Cuenta de prueba
 
-Para subir `main` al remoto:
+Al correr `npm run seed` con el `.env` de ejemplo se crea esta cuenta:
+
+- **URL:** `http://localhost:5173/login`
+- **Correo:** `tecnico@infofix.test`
+- **Contraseña:** `Tecnico123!`
+- **Código del taller (para registrar nuevas cuentas):** `CAMBIA-ESTE-CODIGO`
+
+*(Los correos de recuperación y avisos se imprimen en la consola del backend mientras `SMTP_HOST` esté vacío en `backend/.env`).*
+
+## 3. Cómo hacer push a `main`
 
 ```bash
 git push origin main
 ```
 
-Si prefieres probar primero en una rama aparte sin tocar `main` en GitHub:
+Si quieres probar primero en una rama aparte en GitHub sin tocar `main`:
 
 ```bash
 git push origin main:refs/heads/main_prueba
 ```
-
-## 4. Notas para pruebas y despliegue
-
-- **Base de datos SQLite:** Al arrancar el backend por primera vez se crea `database/infofix.sqlite` usando `database/schema.sql`. Si ya tenías un `.sqlite` viejo de versiones anteriores, bórralo y vuelve a correr `npm run seed` en `backend/`.
-- **Correos:** Con `SMTP_HOST` vacío en `backend/.env`, los correos de recuperación de contraseña y avisos se imprimen en la consola del backend. Para envío real, configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`.
-- **Verificación:** Ejecuta `npm test` en `backend/` y `npm run build` en `frontend/` después de cualquier cambio.
