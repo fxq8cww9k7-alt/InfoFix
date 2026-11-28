@@ -74,8 +74,12 @@ export default function NotificacionesDropdown() {
     }
 
     void cargarInicial();
+    const intervalo = setInterval(() => {
+      void cargarInicial();
+    }, 30000);
     return () => {
       cancelado = true;
+      clearInterval(intervalo);
     };
   }, []);
 
