@@ -45,7 +45,7 @@ const config = {
   rondasBcrypt: 10, // RF-01: mínimo 10 rondas
   publicBaseUrl: (process.env.PUBLIC_BASE_URL || 'http://localhost:5173').replace(/\/+$/, ''),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  maxArchivoBytes: Number(process.env.MAX_FILE_SIZE_BYTES) || 5 * 1024 * 1024,
+  maxArchivoBytes: Number(process.env.MAX_FILE_SIZE_BYTES) || 15 * 1024 * 1024,
   maxFotosPorEtapa: Number(process.env.MAX_PHOTOS_PER_STAGE) || 5,
   // Sin código configurado el registro público (P2) queda deshabilitado
   codigoTaller: process.env.CODIGO_TALLER || '',
