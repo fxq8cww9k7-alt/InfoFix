@@ -6,7 +6,7 @@
  * @author Yahúm Adair Hernández Martínez
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest } from '../api/client';
@@ -27,6 +27,8 @@ import {
   Lock,
   Upload,
   MessageSquare,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 
 const ESTADOS = ['Recibido', 'Diagnóstico', 'Reparación', 'Pruebas', 'Entregado'];
@@ -147,11 +149,26 @@ export default function DetalleOrdenPage() {
   const [garantiaForm, setGarantiaForm] = useState({ dias_garantia: 30, terminos_garantia: '' });
   const [guardandoGarantia, setGuardandoGarantia] = useState(false);
 
-  // Avisos al cliente (P10)
+  // Avisos al cliente
   const [avisosLista, setAvisosLista] = useState([]);
   const [tiposAviso, setTiposAviso] = useState([]);
   const [avisoForm, setAvisoForm] = useState({ tipo: '', adicional: '', en_estatus: true, por_correo: false });
   const [enviandoAviso, setEnviandoAviso] = useState(false);
+
+  // Dropdowns personalizados (evita <select> nativos)
+  const [menuPiezaAbierto, setMenuPiezaAbierto] = useState(false);
+  const [menuAvisoAbierto, setMenuAvisoAbierto] = useState(false);
+  const menuPiezaRef = useRef(null);
+  const menuAvisoRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuPiezaRef.current && !menuPiezaRef.current.contains(e.target)) setMenuPiezaAbierto(false);
+      if (menuAvisoRef.current && !menuAvisoRef.current.contains(e.target)) setMenuAvisoAbierto(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   /**
    * Carga el expediente completo de la orden y su historial de avisos al cliente.
@@ -405,13 +422,15 @@ export default function DetalleOrdenPage() {
   // Reglas de visibilidad progresiva según la etapa actual
   const indiceEstado = ESTADOS.indexOf(orden?.estado);
   const esEntregado = orden?.estado === 'Entregado';
-  const mostrarRefacciones = indiceEstado >= 1; // Desde Diagnóstico en adelante
-  const puedeEditarRefacciones = orden?.estado === 'Diagnóstico' || orden?.estado === 'Reparación';
+  const mostrarRefacciones = indiceEstado >= 2; // Desde Reparación en adelante
+  const puedeEditarRefacciones = orden?.estado === 'Reparación';
   const mostrarAvisos = indiceEstado >= 1 && !esEntregado; // Diagnóstico, Reparación y Pruebas
-  const mostrarEvidenciasDespues = indiceEstado >= 2; // Desde Reparación en adelante
-  const puedeSubirDespues = orden?.estado === 'Reparación' || orden?.estado === 'Pruebas';
+  const mostrarEvidenciasDespues = indiceEstado >= 3; // Desde Pruebas en adelante
+  const puedeSubirDespues = orden?.estado === 'Pruebas';
   const mostrarGarantia = indiceEstado >= 3; // En Pruebas y solo lectura en Entregado
   const puedeEditarGarantia = orden?.estado === 'Pruebas';
+  const puedeAvisarListo = orden?.estado === 'Pruebas' || orden?.estado === 'Entregado';
+  const tiposAvisoDisponibles = tiposAviso.filter((t) => t !== 'listo_para_recoger' || puedeAvisarListo);
 
   const transicionActual = SIGUIENTE_ETAPA[orden?.estado] || null;
   const fotosAntes = obtenerFotosEtapa(orden?.evidencias, 'antes');
@@ -421,7 +440,12 @@ export default function DetalleOrdenPage() {
       (orden?.garantia?.dias !== undefined || orden?.dias_garantia !== undefined),
   );
   const tokenEstatus = obtenerTokenEstatus(orden);
-  const tokenCertificado = certificadoEmitido?.token || orden?.certificado?.token || orden?.token_certificado;
+  const tokenCertificado =
+    certificadoEmitido?.token_uuid ||
+    certificadoEmitido?.token ||
+    orden?.certificado?.token_uuid ||
+    orden?.certificado?.token ||
+    orden?.token_certificado;
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] text-[#0B0D12] flex flex-col lg:flex-row font-sans">
@@ -498,8 +522,8 @@ export default function DetalleOrdenPage() {
           )}
 
           {mensajeOk && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            <div className="p-3.5 rounded-xl bg-emerald-600 border border-emerald-700 text-white text-xs font-medium flex items-center gap-2 shadow-md">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
               <span>{mensajeOk}</span>
             </div>
           )}
@@ -508,8 +532,8 @@ export default function DetalleOrdenPage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
             <div className="grid grid-cols-5 gap-2">
               {ESTADOS.map((etapa, idx) => {
-                const completada = idx < indiceEstado;
-                const actual = idx === indiceEstado;
+                const completada = idx < indiceEstado || (esEntregado && etapa === 'Entregado');
+                const actual = idx === indiceEstado && !esEntregado;
                 return (
                   <div key={etapa} className="flex flex-col items-center text-center gap-1.5">
                     <div
@@ -654,15 +678,12 @@ export default function DetalleOrdenPage() {
                     <Camera className="w-4 h-4 text-[#24529F]" />
                     Evidencias Fotográficas
                   </h2>
-                  <span className="text-[10px] font-mono bg-blue-50 text-[#24529F] px-2 py-0.5 rounded-md">
-                    RF-07
-                  </span>
                 </div>
 
-                {/* Fotos de recepción (Antes) */}
+                {/* Fotos de recepción */}
                 <div className="space-y-2">
                   <h3 className="text-[11px] font-mono uppercase font-bold text-slate-400">
-                    Recepción / Antes ({fotosAntes.length})
+                    Recepción de falla ({fotosAntes.length})
                   </h3>
                   {fotosAntes.length === 0 ? (
                     <p className="text-xs text-slate-400 italic">Sin fotografías de recepción.</p>
@@ -729,16 +750,13 @@ export default function DetalleOrdenPage() {
                 )}
               </section>
 
-              {/* 3. Refacciones / Piezas (Solo desde Diagnóstico en adelante — RF-08) */}
+              {/* 3. Refacciones / Piezas (Desde Reparación en adelante) */}
               {mostrarRefacciones && (
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h2 className="font-bold text-sm text-[#0B0D12]">
                       Piezas o Refacciones Sustituidas
                     </h2>
-                    <span className="text-[10px] font-mono bg-blue-50 text-[#24529F] px-2 py-0.5 rounded-md">
-                      RF-08
-                    </span>
                   </div>
 
                   {puedeEditarRefacciones && (
@@ -754,15 +772,42 @@ export default function DetalleOrdenPage() {
                         onChange={(e) => setNuevaPieza({ ...nuevaPieza, nombre: e.target.value })}
                         className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#24529F]"
                       />
-                      <select
-                        value={nuevaPieza.tipo}
-                        onChange={(e) => setNuevaPieza({ ...nuevaPieza, tipo: e.target.value })}
-                        className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#24529F]"
-                      >
-                        <option value="original">Original</option>
-                        <option value="compatible">Compatible</option>
-                        <option value="reacondicionada">Reacondicionada</option>
-                      </select>
+                      <div className="relative" ref={menuPiezaRef}>
+                        <button
+                          type="button"
+                          onClick={() => setMenuPiezaAbierto(!menuPiezaAbierto)}
+                          className="w-full bg-white border border-slate-200 hover:border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 flex items-center justify-between cursor-pointer"
+                        >
+                          <span className="capitalize">{nuevaPieza.tipo}</span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${menuPiezaAbierto ? 'rotate-180' : ''}`} />
+                        </button>
+                        {menuPiezaAbierto && (
+                          <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1">
+                            {[
+                              { value: 'original', label: 'Original' },
+                              { value: 'compatible', label: 'Compatible' },
+                              { value: 'reacondicionada', label: 'Reacondicionada' },
+                            ].map((op) => (
+                              <button
+                                key={op.value}
+                                type="button"
+                                onClick={() => {
+                                  setNuevaPieza({ ...nuevaPieza, tipo: op.value });
+                                  setMenuPiezaAbierto(false);
+                                }}
+                                className={`w-full px-3 py-1.5 text-xs flex items-center justify-between cursor-pointer ${
+                                  nuevaPieza.tipo === op.value
+                                    ? 'bg-blue-50 text-[#24529F] font-semibold'
+                                    : 'text-slate-700 hover:bg-slate-50'
+                                }`}
+                              >
+                                <span>{op.label}</span>
+                                {nuevaPieza.tipo === op.value && <Check className="w-3 h-3" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <input
                         type="text"
                         placeholder="Serie/Lote (opcional)"
@@ -828,9 +873,6 @@ export default function DetalleOrdenPage() {
                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
                       Garantía del Servicio
                     </h2>
-                    <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md">
-                      RF-09
-                    </span>
                   </div>
 
                   {puedeEditarGarantia ? (
@@ -893,35 +935,53 @@ export default function DetalleOrdenPage() {
 
             {/* ================= COLUMNA DERECHA (1/3) ================= */}
             <div className="space-y-6">
-              {/* Avisos al cliente (P10) — visible en Diagnóstico, Reparación y Pruebas */}
-              {mostrarAvisos && tiposAviso.length > 0 && (
+              {/* Avisos al cliente — visible en Diagnóstico, Reparación y Pruebas */}
+              {mostrarAvisos && tiposAvisoDisponibles.length > 0 && (
                 <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h2 className="font-bold text-sm text-[#0B0D12] flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-[#24529F]" />
                       Avisar al Cliente
                     </h2>
-                    <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                      P10
-                    </span>
                   </div>
 
                   <form onSubmit={handleEnviarAviso} className="space-y-3 text-xs">
-                    <div>
+                    <div className="relative" ref={menuAvisoRef}>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                         Tipo de aviso
                       </label>
-                      <select
-                        value={avisoForm.tipo}
-                        onChange={(e) => setAvisoForm({ ...avisoForm, tipo: e.target.value })}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:border-[#24529F]"
+                      <button
+                        type="button"
+                        onClick={() => setMenuAvisoAbierto(!menuAvisoAbierto)}
+                        className="w-full border border-slate-200 hover:border-slate-300 rounded-xl px-3 py-2 text-xs bg-white text-slate-800 flex items-center justify-between cursor-pointer"
                       >
-                        {tiposAviso.map((t) => (
-                          <option key={t} value={t}>
-                            {formatearTipoAviso(t)}
-                          </option>
-                        ))}
-                      </select>
+                        <span>
+                          {avisoForm.tipo ? formatearTipoAviso(avisoForm.tipo) : 'Selecciona un aviso'}
+                        </span>
+                        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${menuAvisoAbierto ? 'rotate-180' : ''}`} />
+                      </button>
+                      {menuAvisoAbierto && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1">
+                          {tiposAvisoDisponibles.map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => {
+                                setAvisoForm({ ...avisoForm, tipo: t });
+                                setMenuAvisoAbierto(false);
+                              }}
+                              className={`w-full px-3 py-2 text-xs flex items-center justify-between text-left cursor-pointer ${
+                                avisoForm.tipo === t
+                                  ? 'bg-blue-50 text-[#24529F] font-semibold'
+                                  : 'text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              <span>{formatearTipoAviso(t)}</span>
+                              {avisoForm.tipo === t && <Check className="w-3.5 h-3.5 shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -944,7 +1004,7 @@ export default function DetalleOrdenPage() {
                           checked={avisoForm.en_estatus}
                           onChange={(e) => setAvisoForm({ ...avisoForm, en_estatus: e.target.checked })}
                         />
-                        Mostrar en estatus QR
+                        Publicar en la página del cliente
                       </label>
                       <label className="inline-flex items-center gap-1.5 cursor-pointer">
                         <input
@@ -988,10 +1048,10 @@ export default function DetalleOrdenPage() {
                 </section>
               )}
 
-              {/* Línea de Tiempo (RF-06 — Siempre visible) */}
+              {/* Historial de la orden */}
               <section className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
                 <h2 className="font-bold text-sm text-[#0B0D12] border-b border-slate-100 pb-3">
-                  Línea de Tiempo (RF-06)
+                  Historial de la orden
                 </h2>
                 <div className="space-y-3">
                   {!orden?.historial || orden.historial.length === 0 ? (
@@ -1048,15 +1108,13 @@ export default function DetalleOrdenPage() {
               <strong>{transicionActual.siguiente}</strong>. Este paso no se puede deshacer.
             </div>
 
-            <form onSubmit={handleConfirmarCambioEstado} className="space-y-3">
+            <form onSubmit={handleConfirmarCambioEstado} noValidate className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nota técnica obligatoria (mín. 5 caracteres) *
+                  Descripción del avance *
                 </label>
                 <textarea
                   rows={3}
-                  required
-                  minLength={5}
                   placeholder={transicionActual.placeholder}
                   value={notaEstado}
                   onChange={(e) => {
