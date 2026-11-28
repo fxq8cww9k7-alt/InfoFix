@@ -412,7 +412,9 @@ export default function NuevaOrdenPage() {
   const nombreLleno = formData.nombre_cliente.trim().length > 0;
   const telefonoLimpio = formData.telefono_cliente.replace(/\D/g, '');
   const telefonoValido = telefonoLimpio.length === 10;
-  const datosClienteCompletos = nombreLleno && telefonoValido;
+  const emailTrim = formData.email_cliente.trim();
+  const emailValido = !emailTrim || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim);
+  const datosClienteCompletos = nombreLleno && telefonoValido && emailValido;
 
   const imeiLleno = formData.imei_o_serie.trim().length > 0;
   const imeiValido = esCelular
@@ -452,6 +454,12 @@ export default function NuevaOrdenPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (!emailValido) {
+      setError('Ingresa un correo electrónico válido (ej. cliente@correo.com) o déjalo vacío.');
+      setLoading(false);
+      return;
+    }
 
     if (
       !datosClienteCompletos ||
@@ -595,23 +603,25 @@ export default function NuevaOrdenPage() {
       {/* Contenido en 2 columnas */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
         {error && (
-          <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full p-4 rounded-2xl bg-white border border-rose-200 shadow-xl flex items-start gap-3 text-rose-700 text-xs">
-            <AlertCircle className="w-5 h-5 shrink-0 text-rose-500 mt-0.5" />
+          <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full p-4 rounded-2xl bg-[#0D1B3E] text-white border border-white/10 shadow-2xl flex items-start gap-3 text-xs">
+            <div className="w-7 h-7 rounded-xl bg-rose-500/20 text-rose-300 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertCircle className="w-4 h-4" />
+            </div>
             <div className="flex-1">
-              <span className="font-bold block mb-0.5 text-slate-900">Verifica la información</span>
-              <span className="text-slate-600">{error}</span>
+              <span className="font-bold block mb-0.5 text-white">Revisa la información</span>
+              <span className="text-slate-300 leading-relaxed">{error}</span>
             </div>
             <button
               type="button"
               onClick={() => setError(null)}
-              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="text-slate-400 hover:text-white cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form noValidate onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* COLUMNA IZQUIERDA (8 cols) */}
             <div className="lg:col-span-8 space-y-6">
@@ -788,8 +798,17 @@ export default function NuevaOrdenPage() {
                       value={formData.email_cliente}
                       onChange={handleChange}
                       placeholder="Ej. cliente@correo.com"
-                      className="w-full bg-white disabled:bg-slate-50 disabled:text-slate-500 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#24529F]"
+                      className={`w-full bg-white disabled:bg-slate-50 disabled:text-slate-500 border rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none ${
+                        !emailValido
+                          ? 'border-rose-300 focus:border-rose-500 bg-rose-50/20'
+                          : 'border-slate-200 focus:border-[#24529F]'
+                      }`}
                     />
+                    {!emailValido && (
+                      <p className="text-[11px] text-rose-600 font-medium mt-1">
+                        Ingresa un correo válido (ej. nombre@dominio.com)
+                      </p>
+                    )}
                   </div>
                 </div>
               </section>

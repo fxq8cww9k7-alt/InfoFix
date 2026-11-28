@@ -9,7 +9,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import TallerSidebar from '../components/TallerSidebar';
-import NotificacionesDropdown from '../components/notificaciones/NotificacionesDropdown';
 import {
   Search,
   FileCheck,
@@ -18,6 +17,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 
 /**
@@ -78,42 +78,48 @@ export default function CertificadosPage() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Barra superior */}
         <header className="bg-white border-b border-slate-200 px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 shadow-sm sticky top-0 z-20">
-          <div className="text-xs font-medium text-slate-500">
-            Registros / <span className="text-[#0B0D12] font-semibold">Certificados</span>
+          <div className="flex items-center gap-2.5 text-xs font-medium text-slate-500">
+            <Link
+              to="/dashboard"
+              className="lg:hidden p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+              title="Volver al inicio"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </Link>
+            <span>
+              Registros / <span className="text-[#0B0D12] font-semibold">Certificados</span>
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                cargarCertificados();
-              }}
-              className="relative w-64 sm:w-80"
-            >
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Buscar por folio, cliente, equipo o IMEI"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
-              />
-              {busqueda && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBusqueda('');
-                    cargarCertificados('');
-                  }}
-                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  title="Limpiar búsqueda"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </form>
-            <NotificacionesDropdown />
-          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              cargarCertificados();
+            }}
+            className="relative w-64 sm:w-80"
+          >
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Buscar por folio, cliente, equipo o IMEI"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
+            />
+            {busqueda && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBusqueda('');
+                  cargarCertificados('');
+                }}
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Limpiar búsqueda"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </form>
         </header>
 
         <main className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">

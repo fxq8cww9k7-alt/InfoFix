@@ -271,6 +271,10 @@ export default function DetalleOrdenPage() {
    */
   const handleAgregarPieza = async (e) => {
     e.preventDefault();
+    if (!nuevaPieza.nombre.trim()) {
+      setError('Ingresa el nombre de la pieza o refacción.');
+      return;
+    }
     try {
       setGuardandoPieza(true);
       setError(null);
@@ -347,6 +351,15 @@ export default function DetalleOrdenPage() {
    */
   const handleGuardarGarantia = async (e) => {
     e.preventDefault();
+    const dias = Number(garantiaForm.dias_garantia);
+    if (!Number.isFinite(dias) || dias < 0) {
+      setError('Los días de garantía deben ser 0 o mayor.');
+      return;
+    }
+    if (!garantiaForm.terminos_garantia.trim()) {
+      setError('Ingresa los términos y cobertura de la garantía.');
+      return;
+    }
     try {
       setGuardandoGarantia(true);
       setError(null);
@@ -761,6 +774,7 @@ export default function DetalleOrdenPage() {
 
                   {puedeEditarRefacciones && (
                     <form
+                      noValidate
                       onSubmit={handleAgregarPieza}
                       className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200"
                     >
@@ -876,7 +890,7 @@ export default function DetalleOrdenPage() {
                   </div>
 
                   {puedeEditarGarantia ? (
-                    <form onSubmit={handleGuardarGarantia} className="space-y-3">
+                    <form noValidate onSubmit={handleGuardarGarantia} className="space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-600 mb-1">
@@ -945,7 +959,7 @@ export default function DetalleOrdenPage() {
                     </h2>
                   </div>
 
-                  <form onSubmit={handleEnviarAviso} className="space-y-3 text-xs">
+                  <form noValidate onSubmit={handleEnviarAviso} className="space-y-3 text-xs">
                     <div className="relative" ref={menuAvisoRef}>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                         Tipo de aviso

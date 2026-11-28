@@ -99,14 +99,17 @@ export default function TallerSidebar({ ordenesActivas = null }) {
     <aside className="w-full lg:w-64 bg-[#0D1B3E] text-slate-300 flex flex-col justify-between shrink-0 border-r border-slate-800">
       <div>
         {/* Cabecera InfoFIX */}
-        <div className="p-6 flex items-center gap-3 border-b border-white/10">
+        <Link
+          to="/dashboard"
+          className="p-6 flex items-center gap-3 border-b border-white/10 hover:bg-white/5 transition-colors"
+        >
           <div className="w-9 h-9 rounded-xl bg-[#24529F] flex items-center justify-center text-white shadow-sm">
             <Wrench className="w-5 h-5" />
           </div>
           <div>
             <span className="font-bold text-white text-lg tracking-tight">InfoFIX</span>
           </div>
-        </div>
+        </Link>
 
         {/* Grupos de navegación */}
         <div className="p-4 space-y-6">
