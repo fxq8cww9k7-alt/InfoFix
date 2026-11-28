@@ -6,9 +6,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import TallerSidebar from '../components/TallerSidebar';
+import NotificacionesDropdown from '../components/notificaciones/NotificacionesDropdown';
 import { Search, Plus, FileText, X } from 'lucide-react';
 
 const ESTADOS = ['Recibido', 'Diagnóstico', 'Reparación', 'Pruebas', 'Entregado'];
@@ -54,6 +55,7 @@ function formatearFecha(fecha) {
  * @returns {JSX.Element} Vista de tabla de órdenes con barra de búsqueda y filtro por estados.
  */
 export default function OrdenesPage() {
+  const navigate = useNavigate();
   const [ordenes, setOrdenes] = useState([]);
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -137,33 +139,36 @@ export default function OrdenesPage() {
             Taller / <span className="text-[#0B0D12] font-semibold">Órdenes</span>
           </div>
 
-          <div className="flex flex-col items-end">
-            <form onSubmit={handleBusqueda} className="relative w-64 sm:w-80">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Buscar por folio, cliente, teléfono o IMEI"
-                value={busqueda}
-                onChange={(e) => {
-                  setBusqueda(e.target.value);
-                  if (avisoBusqueda) setAvisoBusqueda('');
-                }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
-              />
-              {busqueda && (
-                <button
-                  type="button"
-                  onClick={handleLimpiarFiltros}
-                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  title="Limpiar búsqueda"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end">
+              <form onSubmit={handleBusqueda} className="relative w-64 sm:w-80">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Buscar por folio, cliente, teléfono o IMEI"
+                  value={busqueda}
+                  onChange={(e) => {
+                    setBusqueda(e.target.value);
+                    if (avisoBusqueda) setAvisoBusqueda('');
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
+                />
+                {busqueda && (
+                  <button
+                    type="button"
+                    onClick={handleLimpiarFiltros}
+                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title="Limpiar búsqueda"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </form>
+              {avisoBusqueda && (
+                <span className="text-[10px] text-amber-600 mt-1">{avisoBusqueda}</span>
               )}
-            </form>
-            {avisoBusqueda && (
-              <span className="text-[10px] text-amber-600 mt-1">{avisoBusqueda}</span>
-            )}
+            </div>
+            <NotificacionesDropdown />
           </div>
         </header>
 
@@ -256,7 +261,14 @@ export default function OrdenesPage() {
                     {ordenes.map((ord) => {
                       const estilo = obtenerEstiloEstado(ord.estado);
                       return (
-                        <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr
+                          key={ord.id}
+                          onClick={() => {
+                            if (window.getSelection()?.toString()) return;
+                            navigate(`/ordenes/${ord.id}`);
+                          }}
+                          className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                        >
                           <td className="py-3 px-4 font-mono font-bold text-[#0B0D12] whitespace-nowrap">
                             {ord.folio}
                           </td>
