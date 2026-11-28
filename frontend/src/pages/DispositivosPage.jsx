@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import TallerSidebar from '../components/TallerSidebar';
+import NotificacionesDropdown from '../components/notificaciones/NotificacionesDropdown';
 import {
   Search,
   Smartphone,
@@ -151,35 +152,38 @@ export default function DispositivosPage() {
             Registros / <span className="text-[#0B0D12] font-semibold">Dispositivos</span>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              cargarDispositivos();
-            }}
-            className="relative w-64 sm:w-80"
-          >
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Buscar por IMEI/serie, marca, modelo o dueño"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
-            />
-            {busqueda && (
-              <button
-                type="button"
-                onClick={() => {
-                  setBusqueda('');
-                  cargarDispositivos('');
-                }}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                title="Limpiar búsqueda"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </form>
+          <div className="flex items-center gap-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                cargarDispositivos();
+              }}
+              className="relative w-64 sm:w-80"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Buscar por IMEI/serie, marca, modelo o dueño"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusqueda('');
+                    cargarDispositivos('');
+                  }}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </form>
+            <NotificacionesDropdown />
+          </div>
         </header>
 
         <main className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">

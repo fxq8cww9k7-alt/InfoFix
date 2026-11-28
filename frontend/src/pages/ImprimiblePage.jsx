@@ -146,9 +146,11 @@ export default function ImprimiblePage({ modo = 'certificado' }) {
     'Válida contra defectos de reparación. Excluye daños por humedad o golpes posteriores.';
   const fechaVencimiento =
     orden?.garantia?.fecha_fin ||
+    orden?.garantia?.fin ||
     orden?.garantia?.fecha_vencimiento ||
     orden?.garantia_fin ||
     datos.garantia?.fecha_fin ||
+    datos.garantia?.fin ||
     null;
 
   return (
@@ -185,17 +187,17 @@ export default function ImprimiblePage({ modo = 'certificado' }) {
       </div>
 
       {/* Contenedor principal en formato Media Carta (148mm x 215mm) */}
-      <div className="w-full max-w-[148mm] bg-white border border-slate-200 shadow-xl rounded-2xl p-6 print:max-w-none print:w-full print:border-none print:shadow-none print:p-4 text-[#0B0D12] text-xs space-y-4">
+      <div className="w-full max-w-[148mm] bg-white border border-slate-200 shadow-xl rounded-2xl p-6 print:max-w-none print:w-full print:border-none print:shadow-none print:p-2 text-[#0B0D12] text-xs print:text-[11pt] space-y-4 print:space-y-3">
         {/* Encabezado del Taller */}
         <div className="flex items-start justify-between border-b border-slate-200 pb-4 gap-3">
           <div>
-            <h1 className="text-base font-extrabold text-[#0D1B3E] tracking-tight">
+            <h1 className="text-base print:text-lg font-extrabold text-[#0D1B3E] tracking-tight">
               {taller?.nombre || 'InfoFIX Taller Técnico'}
             </h1>
-            <p className="text-[10px] text-slate-500 font-mono">
+            <p className="text-[10px] print:text-xs text-slate-500 font-mono">
               {esNota
-                ? 'Nota de Recepción y Seguimiento de Orden (P12)'
-                : 'Certificado Oficial de Reparación y Garantía (P13)'}
+                ? 'Nota de Recepción y Seguimiento de Orden'
+                : 'Certificado Oficial de Reparación y Garantía'}
             </p>
             {esNota && taller?.direccion && (
               <p className="text-[10px] text-slate-500 mt-0.5">{taller.direccion}</p>
@@ -350,7 +352,7 @@ export default function ImprimiblePage({ modo = 'certificado' }) {
           <div className="col-span-2 space-y-1">
             <p className="font-bold text-[#0D1B3E] text-xs">
               {esNota
-                ? 'Seguimiento de reparación en tiempo real'
+                ? 'Seguimiento de reparación'
                 : 'Verificación de autenticidad y garantía'}
             </p>
             <p className="text-[10px] text-slate-600 leading-relaxed">
@@ -380,7 +382,7 @@ export default function ImprimiblePage({ modo = 'certificado' }) {
               </div>
             )}
             <span className="text-[8px] font-mono text-slate-500 mt-1 text-center">
-              {esNota ? 'Estatus en vivo' : 'Escanee para verificar'}
+              {esNota ? 'Comprueba su estatus o avance' : 'Escanee para verificar'}
             </span>
           </div>
         </div>
@@ -388,7 +390,7 @@ export default function ImprimiblePage({ modo = 'certificado' }) {
         {/* Firmas de conformidad solo en Nota de Servicio */}
         {esNota && (
           <div className="pt-6 grid grid-cols-2 gap-8 text-center text-[10px] text-slate-500">
-            <div className="border-t border-slate-300 pt-1.5">Firma del cliente</div>
+            <div className="border-t border-slate-300 pt-1.5">Firma cliente</div>
             <div className="border-t border-slate-300 pt-1.5">Personal que recibe</div>
           </div>
         )}
@@ -410,10 +412,14 @@ export default function ImprimiblePage({ modo = 'certificado' }) {
         @media print {
           @page {
             size: 148mm 215mm;
-            margin: 10mm;
+            margin: 8mm;
           }
-          body {
+          html, body {
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
         }
       `}</style>

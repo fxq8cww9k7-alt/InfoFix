@@ -131,13 +131,13 @@ export default function PublicStatusPage() {
                 InfoFIX
               </span>
               <span className="text-[10px] text-slate-300 font-mono uppercase tracking-wider">
-                Estatus en vivo
+                Seguimiento de servicio
               </span>
             </div>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-mono text-slate-400 uppercase block">Folio</span>
-            <div className="font-mono text-xs font-bold text-cyan-300">{folio}</div>
+            <div className="font-mono text-xs font-bold text-white">{folio}</div>
           </div>
         </div>
       </header>
