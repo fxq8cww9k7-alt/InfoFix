@@ -62,32 +62,52 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [busqueda, setBusqueda] = useState('');
+  const [avisoBusqueda, setAvisoBusqueda] = useState('');
 
   /**
-   * Consulta el listado de órdenes y sus contadores operativos aplicando los filtros activos.
+   * Consulta el listado de órdenes activas y sus contadores operativos aplicando los filtros activos.
    *
+   * @param {string} [terminoOverride] Término de búsqueda explícito.
    * @returns {Promise<void>}
    */
-  const cargarDatos = async () => {
+  const cargarDatos = async (terminoOverride) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (filtroEstado) params.append('estado', filtroEstado);
-      if (busqueda.trim()) params.append('q', busqueda.trim());
+      const q = (terminoOverride !== undefined ? terminoOverride : busqueda).trim();
 
-      const [data, dashData] = await Promise.all([
-        apiRequest(`/api/ordenes?${params.toString()}`),
-        apiRequest('/api/dashboard').catch(() => null),
-      ]);
-      setOrdenes(data.ordenes || []);
-      if (data.resumen) {
-        setResumen(data.resumen);
-      }
+      const dashGlobalPromise = apiRequest('/api/dashboard');
 
-      if (dashData?.ordenes_activas) {
-        setTodasOrdenes(dashData.ordenes_activas);
-      } else if (!filtroEstado && !busqueda.trim()) {
-        setTodasOrdenes(data.ordenes || []);
+      if (q.length >= 3) {
+        const params = new URLSearchParams({ q });
+        if (filtroEstado) params.append('estado', filtroEstado);
+        const [searchData, dashGlobal] = await Promise.all([
+          apiRequest(`/api/ordenes?${params.toString()}`),
+          dashGlobalPromise.catch(() => null),
+        ]);
+        setOrdenes(searchData.ordenes || []);
+        if (searchData.resumen) setResumen(searchData.resumen);
+        if (dashGlobal?.ordenes_activas) setTodasOrdenes(dashGlobal.ordenes_activas);
+      } else {
+        const dashFiltradoPromise = filtroEstado
+          ? apiRequest(`/api/dashboard?estado=${encodeURIComponent(filtroEstado)}`)
+          : dashGlobalPromise;
+        const [dashData, dashGlobal, ordenesResumen] = await Promise.all([
+          dashFiltradoPromise,
+          dashGlobalPromise,
+          apiRequest('/api/ordenes?por_pagina=1').catch(() => null),
+        ]);
+        setOrdenes(dashData.ordenes_activas || []);
+        setTodasOrdenes(dashGlobal.ordenes_activas || []);
+        if (ordenesResumen?.resumen) {
+          setResumen(ordenesResumen.resumen);
+        } else if (dashGlobal.indicadores) {
+          setResumen({
+            activas: dashGlobal.indicadores.activas,
+            pruebas: dashGlobal.indicadores.en_pruebas,
+            entregadas: dashGlobal.indicadores.terminadas,
+            garantias: dashGlobal.indicadores.garantias_vigentes,
+          });
+        }
       }
     } catch (err) {
       console.error('Error al cargar órdenes:', err);
@@ -114,7 +134,13 @@ export default function DashboardPage() {
    */
   const handleBusquedaSubmit = (e) => {
     e.preventDefault();
-    cargarDatos();
+    const q = busqueda.trim();
+    if (q.length > 0 && q.length < 3) {
+      setAvisoBusqueda('Ingresa al menos 3 caracteres para buscar.');
+      return;
+    }
+    setAvisoBusqueda('');
+    cargarDatos(q);
   };
 
   const nombreUsuario = user?.nombre
@@ -153,16 +179,26 @@ export default function DashboardPage() {
 
           {/* Buscador superior (RF-14) y campana de notificaciones */}
           <div className="flex items-center gap-3">
-            <form onSubmit={handleBusquedaSubmit} className="relative w-64 sm:w-80">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Buscar por folio, cliente, teléfono o IMEI"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
-              />
-            </form>
+            <div className="flex flex-col items-end">
+              <form onSubmit={handleBusquedaSubmit} className="relative w-64 sm:w-80">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Buscar por folio, cliente, teléfono o IMEI"
+                  value={busqueda}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setBusqueda(val);
+                    if (avisoBusqueda) setAvisoBusqueda('');
+                    if (!val.trim()) cargarDatos('');
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
+                />
+              </form>
+              {avisoBusqueda && (
+                <span className="text-[10px] text-amber-600 mt-1">{avisoBusqueda}</span>
+              )}
+            </div>
             <NotificacionesDropdown />
           </div>
         </header>
@@ -397,6 +433,9 @@ export default function DashboardPage() {
                         } else if (ord.estado === 'Pruebas') {
                           colorEstado = 'bg-[#0D1B3E] text-white border-[#0D1B3E]';
                           puntoEstado = 'bg-white';
+                        } else if (ord.estado === 'Entregado') {
+                          colorEstado = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          puntoEstado = 'bg-emerald-600';
                         }
 
                         return (
