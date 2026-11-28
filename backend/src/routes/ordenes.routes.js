@@ -101,6 +101,10 @@ router.post(
   },
 );
 
+router.get('/proximo-folio', (req, res) => {
+  res.json({ folio: ordenes.proximoFolio() });
+});
+
 router.get('/:id', (req, res) => {
   res.json({ orden: ordenes.obtenerDetalle(idValido(req.params.id)) });
 });

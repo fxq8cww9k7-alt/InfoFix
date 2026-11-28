@@ -54,6 +54,18 @@ function siguienteFolio(anio) {
 }
 
 /**
+ * Consulta el próximo folio consecutivo sin consumirlo (vista previa en recepción).
+ *
+ * @returns {string}
+ */
+function proximoFolio() {
+  const anio = new Date().getFullYear();
+  const fila = db.prepare('SELECT ultimo FROM folios_consecutivos WHERE anio = ?').get(anio);
+  const siguiente = (fila?.ultimo || 0) + 1;
+  return `RP-${anio}-${String(siguiente).padStart(4, '0')}`;
+}
+
+/**
  * Busca la orden o lanza 404.
  *
  * @param {number} id
@@ -536,6 +548,7 @@ module.exports = {
   ESTADOS,
   TIPOS_REFACCION,
   normalizarAccesorios,
+  proximoFolio,
   registrarEvento,
   crearOrden,
   actualizarEstadoInicial,

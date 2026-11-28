@@ -131,20 +131,11 @@ export default function NuevaOrdenPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Calcular folio estimado
+  // Consultar próximo folio real sin consumirlo
   useEffect(() => {
-    apiRequest('/api/ordenes?por_pagina=1')
+    apiRequest('/api/ordenes/proximo-folio')
       .then((data) => {
-        const anio = new Date().getFullYear();
-        let siguienteNum = 1;
-        const ultimaOrden = data.ordenes?.[0];
-        if (ultimaOrden?.folio) {
-          const num = parseInt(ultimaOrden.folio.split('-')[2], 10);
-          if (!isNaN(num)) siguienteNum = num + 1;
-        } else if (data.resumen?.total || data.total) {
-          siguienteNum = (data.resumen?.total || data.total) + 1;
-        }
-        setFolioEstimado(`RP-${anio}-${String(siguienteNum).padStart(4, '0')}`);
+        if (data.folio) setFolioEstimado(data.folio);
       })
       .catch(() => {
         setFolioEstimado(`RP-${new Date().getFullYear()}-0001`);
