@@ -198,6 +198,7 @@ function vistaPublica(token) {
           ? `Este equipo acumula ${reparaciones} reparaciones certificadas en el taller`
           : 'Primera reparación certificada registrada para este equipo',
     },
+    taller: config.taller,
   };
 }
 
@@ -305,6 +306,7 @@ module.exports = {
   urlEstatus,
   requisitosPendientes,
   emitir,
+  generarQr,
   certificadoConQr,
   qrEstatus,
   enmascarar,

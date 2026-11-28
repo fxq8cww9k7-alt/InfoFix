@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import TallerSidebar from '../components/TallerSidebar';
+import NotificacionesDropdown from '../components/notificaciones/NotificacionesDropdown';
 import {
   Search,
   FileCheck,
@@ -81,35 +82,38 @@ export default function CertificadosPage() {
             Registros / <span className="text-[#0B0D12] font-semibold">Certificados</span>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              cargarCertificados();
-            }}
-            className="relative w-64 sm:w-80"
-          >
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Buscar por folio, cliente, equipo o IMEI"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
-            />
-            {busqueda && (
-              <button
-                type="button"
-                onClick={() => {
-                  setBusqueda('');
-                  cargarCertificados('');
-                }}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                title="Limpiar búsqueda"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </form>
+          <div className="flex items-center gap-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                cargarCertificados();
+              }}
+              className="relative w-64 sm:w-80"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Buscar por folio, cliente, equipo o IMEI"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusqueda('');
+                    cargarCertificados('');
+                  }}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </form>
+            <NotificacionesDropdown />
+          </div>
         </header>
 
         <main className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -174,15 +178,18 @@ export default function CertificadosPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {certificados.map((cert) => {
-                      // Soporta estructura plana o anidada según lo que retorne certificado.service.js
-                      const vigente = cert.garantia?.vigente ?? cert.garantia_vigente;
-                      const fechaFin = cert.garantia?.fecha_fin ?? cert.garantia_fin;
+                      const certToken = cert.token_uuid || cert.token;
+                      const vigente =
+                        cert.garantia?.vigente ??
+                        cert.garantia_vigente ??
+                        (cert.garantia_estado === 'Vigente' || cert.garantia?.estado === 'Vigente');
+                      const fechaFin = cert.garantia?.fecha_fin ?? cert.garantia?.fin ?? cert.garantia_fin;
                       const marca = cert.dispositivo?.marca ?? cert.marca ?? '';
                       const modelo = cert.dispositivo?.modelo ?? cert.modelo ?? '';
                       const clienteNombre = cert.cliente?.nombre_completo ?? cert.cliente ?? '—';
 
                       return (
-                        <tr key={cert.token || cert.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={certToken || cert.orden_id || cert.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3 px-4 font-mono font-bold text-[#0B0D12] whitespace-nowrap">
                             {cert.folio}
                           </td>
@@ -214,10 +221,10 @@ export default function CertificadosPage() {
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-1.5">
-                              {cert.token && (
+                              {certToken && (
                                 <>
                                   <Link
-                                    to={`/certificados/${cert.token}`}
+                                    to={`/certificados/${certToken}`}
                                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition-all"
                                     title="Abrir certificado imprimible Media Carta"
                                   >
@@ -225,7 +232,7 @@ export default function CertificadosPage() {
                                     Imprimir
                                   </Link>
                                   <a
-                                    href={`/verificar/${cert.token}`}
+                                    href={`/verificar/${certToken}`}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#0D1B3E] hover:bg-[#12284A] text-white text-xs font-semibold shadow-sm transition-all"

@@ -137,8 +137,10 @@ export default function PublicVerifyPage() {
     total_reparaciones_equipo,
   } = data;
 
-  const garantiaVigente = garantia?.vigente;
+  const garantiaVigente = garantia?.vigente ?? garantia?.estado === 'Vigente';
   const fechaVencimiento = garantia?.fecha_fin || garantia?.fin;
+  const totalReparaciones =
+    total_reparaciones_equipo ?? data.historial?.reparaciones_certificadas ?? 1;
   const fotosNormalizadas = normalizarEvidencias(evidencias);
 
   return (
@@ -277,8 +279,8 @@ export default function PublicVerifyPage() {
           <div className="mt-4 p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-2.5 text-xs text-slate-700">
             <History className="w-4 h-4 text-[#24529F] shrink-0" />
             <span>
-              {total_reparaciones_equipo && total_reparaciones_equipo > 1
-                ? `Este dispositivo acumula ${total_reparaciones_equipo} reparaciones certificadas registradas en el taller.`
+              {totalReparaciones > 1
+                ? `Este dispositivo acumula ${totalReparaciones} reparaciones certificadas registradas en el taller.`
                 : 'Primera reparación certificada registrada para este equipo.'}
             </span>
           </div>
