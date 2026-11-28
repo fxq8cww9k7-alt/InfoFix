@@ -15,6 +15,7 @@ import DetalleOrdenPage from './pages/DetalleOrdenPage';
 import ClientesPage from './pages/ClientesPage';
 import DispositivosPage from './pages/DispositivosPage';
 import CertificadosPage from './pages/CertificadosPage';
+import NotificacionesPage from './pages/NotificacionesPage';
 import PublicStatusPage from './pages/PublicStatusPage';
 import PublicVerifyPage from './pages/PublicVerifyPage';
 import ImprimiblePage from './pages/ImprimiblePage';
@@ -142,6 +143,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ImprimiblePage modo="certificado" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notificaciones"
+            element={
+              <ProtectedRoute>
+                <NotificacionesPage />
               </ProtectedRoute>
             }
           />

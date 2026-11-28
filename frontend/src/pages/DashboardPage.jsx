@@ -6,10 +6,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest } from '../api/client';
 import TallerSidebar from '../components/TallerSidebar';
+import NotificacionesDropdown from '../components/notificaciones/NotificacionesDropdown';
 import {
   Plus,
   FileText,
@@ -53,6 +54,7 @@ function obtenerSaludo() {
  */
 export default function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [ordenes, setOrdenes] = useState([]);
   const [todasOrdenes, setTodasOrdenes] = useState([]);
@@ -73,14 +75,18 @@ export default function DashboardPage() {
       if (filtroEstado) params.append('estado', filtroEstado);
       if (busqueda.trim()) params.append('q', busqueda.trim());
 
-      const data = await apiRequest(`/api/ordenes?${params.toString()}`);
+      const [data, dashData] = await Promise.all([
+        apiRequest(`/api/ordenes?${params.toString()}`),
+        apiRequest('/api/dashboard').catch(() => null),
+      ]);
       setOrdenes(data.ordenes || []);
       if (data.resumen) {
         setResumen(data.resumen);
       }
 
-      // Conserva el catálogo sin filtros para que el widget de etapas mantenga los totales globales
-      if (!filtroEstado && !busqueda.trim()) {
+      if (dashData?.ordenes_activas) {
+        setTodasOrdenes(dashData.ordenes_activas);
+      } else if (!filtroEstado && !busqueda.trim()) {
         setTodasOrdenes(data.ordenes || []);
       }
     } catch (err) {
@@ -145,8 +151,8 @@ export default function DashboardPage() {
             Resumen de órdenes
           </div>
 
-          {/* Buscador superior (RF-14) */}
-          <div className="flex items-center gap-2">
+          {/* Buscador superior (RF-14) y campana de notificaciones */}
+          <div className="flex items-center gap-3">
             <form onSubmit={handleBusquedaSubmit} className="relative w-64 sm:w-80">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
@@ -157,6 +163,7 @@ export default function DashboardPage() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#24529F] focus:bg-white transition-all"
               />
             </form>
+            <NotificacionesDropdown />
           </div>
         </header>
 
@@ -286,11 +293,11 @@ export default function DashboardPage() {
           {/* ================= LAYOUT EN 2 COLUMNAS: ÓRDENES + ETAPAS ================= */}
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             {/* COLUMNA IZQUIERDA: Tabla de Órdenes Activas */}
-            <div className="flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex-1 min-w-0 w-full bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <h2 className="font-bold text-sm text-[#0B0D12] shrink-0">Órdenes activas</h2>
 
-                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setFiltroEstado('')}
@@ -393,7 +400,14 @@ export default function DashboardPage() {
                         }
 
                         return (
-                          <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
+                          <tr
+                            key={ord.id}
+                            onClick={() => {
+                              if (window.getSelection()?.toString()) return;
+                              navigate(`/ordenes/${ord.id}`);
+                            }}
+                            className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                          >
                             <td className="py-3 px-3 sm:px-4 font-mono font-bold text-[#0B0D12] whitespace-nowrap">
                               {ord.folio}
                             </td>
