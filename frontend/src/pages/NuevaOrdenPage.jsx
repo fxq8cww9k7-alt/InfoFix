@@ -111,6 +111,7 @@ export default function NuevaOrdenPage() {
   // Equipos previos del cliente y detección por IMEI/SN
   const [equiposCliente, setEquiposCliente] = useState([]);
   const [dispositivoExistente, setDispositivoExistente] = useState(null);
+  const [avisoDispositivoAjeno, setAvisoDispositivoAjeno] = useState(null);
 
   const [folioEstimado, setFolioEstimado] = useState('RP-2026-0001');
   const [fotos, setFotos] = useState([]);
@@ -186,28 +187,43 @@ export default function NuevaOrdenPage() {
 
     if (!validoParaBuscar) {
       setDispositivoExistente(null);
+      setAvisoDispositivoAjeno(null);
       return;
     }
 
     const timer = setTimeout(() => {
       apiRequest(`/api/dispositivos?imei_o_serie=${encodeURIComponent(serie)}`)
         .then((data) => {
-          if (data.dispositivo) {
-            setDispositivoExistente(data.dispositivo);
+          const disp = data.dispositivo;
+          if (!disp) return;
+
+          if (clienteExistente && disp.cliente_id === clienteExistente.id) {
+            setAvisoDispositivoAjeno(null);
+            setDispositivoExistente(disp);
             setFormData((prev) => ({
               ...prev,
-              tipo_dispositivo: data.dispositivo.tipo || prev.tipo_dispositivo,
-              marca: data.dispositivo.marca || prev.marca,
-              modelo: data.dispositivo.modelo || prev.modelo,
-              color: data.dispositivo.color || prev.color,
+              tipo_dispositivo: disp.tipo || prev.tipo_dispositivo,
+              marca: disp.marca || prev.marca,
+              modelo: disp.modelo || prev.modelo,
+              color: disp.color || prev.color,
             }));
+          } else {
+            setDispositivoExistente(null);
+            setAvisoDispositivoAjeno(
+              clienteExistente
+                ? 'Este IMEI o número de serie ya está registrado a nombre de otro cliente.'
+                : 'Este IMEI o número de serie ya está registrado a un cliente existente. Selecciónalo arriba si es el mismo propietario.',
+            );
           }
         })
-        .catch(() => setDispositivoExistente(null));
+        .catch(() => {
+          setDispositivoExistente(null);
+          setAvisoDispositivoAjeno(null);
+        });
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [formData.imei_o_serie, formData.tipo_dispositivo]);
+  }, [formData.imei_o_serie, formData.tipo_dispositivo, clienteExistente]);
 
   /**
    * Selecciona un cliente existente y carga sus dispositivos registrados para reutilizarlos en un clic.
@@ -292,6 +308,7 @@ export default function NuevaOrdenPage() {
    */
   const seleccionarEquipoPrevio = (eq) => {
     setDispositivoExistente(eq);
+    setAvisoDispositivoAjeno(null);
     setFormData((prev) => ({
       ...prev,
       tipo_dispositivo: eq.tipo || 'otro',
@@ -496,7 +513,13 @@ export default function NuevaOrdenPage() {
           dispositivoId = resDisp.dispositivo.id;
         } catch (err) {
           if (err.data?.dispositivo?.id) {
-            dispositivoId = err.data.dispositivo.id;
+            if (err.data.dispositivo.cliente_id === clienteId) {
+              dispositivoId = err.data.dispositivo.id;
+            } else {
+              throw new Error(
+                'Este IMEI o número de serie pertenece a otro cliente registrado. Selecciónalo como propietario o verifica el dato.',
+              );
+            }
           } else {
             throw err;
           }
@@ -839,8 +862,15 @@ export default function NuevaOrdenPage() {
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2.5 text-xs text-emerald-800">
                     <History className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
-                      Equipo reconocido por su {esCelular ? 'IMEI' : 'S/N'}. Esta orden se agregará a su historial técnico (RF-15).
+                      Equipo reconocido por su {esCelular ? 'IMEI' : 'S/N'}. Esta orden se agregará a su historial técnico.
                     </span>
+                  </div>
+                )}
+
+                {avisoDispositivoAjeno && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2.5 text-xs text-amber-800">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>{avisoDispositivoAjeno}</span>
                   </div>
                 )}
 
