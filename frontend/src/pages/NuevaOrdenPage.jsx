@@ -354,7 +354,7 @@ export default function NuevaOrdenPage() {
     if (!files.length) return;
 
     const formatosPermitidos = ['image/jpeg', 'image/png', 'image/jpg'];
-    const maxBytes = 5 * 1024 * 1024;
+    const maxBytes = 15 * 1024 * 1024;
 
     for (const f of files) {
       if (!formatosPermitidos.includes(f.type) && !/\.(jpg|jpeg|png)$/i.test(f.name)) {
@@ -363,7 +363,7 @@ export default function NuevaOrdenPage() {
         return;
       }
       if (f.size > maxBytes) {
-        setError(`El archivo "${f.name}" supera el límite máximo permitido de 5 MB.`);
+        setError(`El archivo "${f.name}" supera el límite máximo permitido de 15 MB.`);
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
@@ -574,12 +574,19 @@ export default function NuevaOrdenPage() {
       {/* Contenido en 2 columnas */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
         {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-xs">
+          <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full p-4 rounded-2xl bg-white border border-rose-200 shadow-xl flex items-start gap-3 text-rose-700 text-xs">
             <AlertCircle className="w-5 h-5 shrink-0 text-rose-500 mt-0.5" />
-            <div>
-              <span className="font-bold block mb-0.5">Verifica la información</span>
-              {error}
+            <div className="flex-1">
+              <span className="font-bold block mb-0.5 text-slate-900">Verifica la información</span>
+              <span className="text-slate-600">{error}</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -666,7 +673,7 @@ export default function NuevaOrdenPage() {
                             Cliente recurrente vinculado: {clienteExistente.nombre_completo}
                           </p>
                           <p className="text-[11px] text-[#2563EB] mt-0.5">
-                            Esta orden se sumará a su historial existente sin duplicar su registro.
+                            Esta orden se sumará a su historial existente.
                           </p>
                         </div>
                       </div>
@@ -799,7 +806,7 @@ export default function NuevaOrdenPage() {
                 {equiposCliente.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-[11px] font-semibold text-slate-500">
-                      Equipos registrados de este cliente (clic para reutilizar y acumular historial):
+                      Equipos registrados de este cliente:
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {equiposCliente.map((eq) => {
@@ -942,6 +949,7 @@ export default function NuevaOrdenPage() {
                         type="text"
                         name="imei_o_serie"
                         required
+                        maxLength={esCelular ? 15 : 30}
                         value={formData.imei_o_serie}
                         onChange={handleChange}
                         placeholder={esCelular ? 'Ej. 356984091234567' : 'Ej. SN-ABC12345678'}
@@ -978,7 +986,7 @@ export default function NuevaOrdenPage() {
                     <h2 className="font-bold text-base text-[#0B0D12]">Estado inicial</h2>
                   </div>
                   <span className="text-xs text-slate-400">
-                    Esta información queda asentada en la nota de recepción
+                    Se incluirá en la nota de recepción
                   </span>
                 </div>
 
@@ -1115,7 +1123,7 @@ export default function NuevaOrdenPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-2">
                     Fotografías de recepción *{' '}
-                    <span className="text-slate-400 font-normal">· mínimo 1, máximo 5 · JPG o PNG hasta 5 MB</span>
+                    <span className="text-slate-400 font-normal">· mínimo 1, máximo 5 · JPG o PNG hasta 15 MB</span>
                   </label>
 
                   <input
@@ -1183,7 +1191,7 @@ export default function NuevaOrdenPage() {
 
                 <div className="bg-[#0D1B3E] rounded-2xl p-4 text-white shadow-inner space-y-2.5">
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 font-bold block">
-                    FOLIO A GENERAR
+                    Folio de la orden
                   </span>
                   <div className="text-xl font-bold font-mono tracking-wide text-white">
                     {folioEstimado}
