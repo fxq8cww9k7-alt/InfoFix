@@ -322,11 +322,18 @@ export default function NuevaOrdenPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (['marca', 'modelo', 'imei_o_serie'].includes(name)) {
+      if (dispositivoExistente) setDispositivoExistente(null);
+      if (name === 'imei_o_serie') setAvisoDispositivoAjeno(null);
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
     setError(null);
   };
 
   const seleccionarTipoDispositivo = (tipo) => {
+    if (dispositivoExistente && dispositivoExistente.tipo !== tipo) {
+      setDispositivoExistente(null);
+    }
     setFormData((prev) => ({ ...prev, tipo_dispositivo: tipo }));
     setDropdownAbierto(false);
     setError(null);
